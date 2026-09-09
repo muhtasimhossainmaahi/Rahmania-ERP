@@ -136,6 +136,7 @@ model FileRegistry {
   visas              Visa[]
   mofaRecords        MofaRecord[]
   embassyRecords     EmbassyRecord[]
+  medicalRecords     MedicalRecord[]
 
   @@map("file_registry")
 }
@@ -300,12 +301,44 @@ model Candidate {
   visas             Visa[]
   mofaRecords       MofaRecord[]
   embassyRecords    EmbassyRecord[]
+  medicalRecords    MedicalRecord[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+enum MedicalStatus {
+  PENDING
+  APPOINTMENT
+  UNDER_PROCESS
+  FIT
+  UNFIT
+  RETEST
+}
+
+model MedicalRecord {
+  id              String        @id @default(uuid())
+  candidateId     String        @map("candidate_id")
+  center          String?
+  appointmentDate DateTime?     @map("appointment_date")
+  examDate        DateTime?     @map("exam_date")
+  result          String?
+  fitDate         DateTime?     @map("fit_date")
+  expiryDate      DateTime?     @map("expiry_date")
+  fitCardFileId   String?       @map("fit_card_file_id")
+  status          MedicalStatus @default(PENDING)
+  isCurrent       Boolean       @default(true) @map("is_current")
+  remarks         String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  candidate   Candidate     @relation(fields: [candidateId], references: [id])
+  fitCardFile FileRegistry? @relation(fields: [fitCardFileId], references: [id])
+
+  @@index([candidateId])
+  @@map("medical_records")
 }
 
 model Visa {

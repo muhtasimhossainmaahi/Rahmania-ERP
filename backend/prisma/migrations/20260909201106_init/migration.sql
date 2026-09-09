@@ -8,6 +8,9 @@ CREATE TYPE "DemandStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED', 'CANCELLED'
 CREATE TYPE "CandidateStatus" AS ENUM ('SOURCED', 'REGISTERED', 'DOCUMENT_VERIFICATION', 'CV_READY', 'SHORTLISTED', 'INTERVIEW', 'SELECTED', 'CONTRACT', 'VISA_PROCESSING', 'VISA_RECEIVED', 'MOFA_EMBASSY', 'MEDICAL', 'POLICE_CLEARANCE', 'BMET_MANPOWER', 'TICKETING', 'READY_TO_DEPART', 'DEPARTED', 'ON_HOLD', 'REJECTED', 'CANCELLED', 'VISA_REJECTED', 'MEDICAL_UNFIT', 'PASSPORT_ISSUE', 'DOCUMENT_REJECTED', 'BMET_REJECTED', 'WITHDRAWN');
 
 -- CreateEnum
+CREATE TYPE "MedicalStatus" AS ENUM ('PENDING', 'APPOINTMENT', 'UNDER_PROCESS', 'FIT', 'UNFIT', 'RETEST');
+
+-- CreateEnum
 CREATE TYPE "InterviewResult" AS ENUM ('SELECTED', 'REJECTED', 'HOLD', 'SECOND_INTERVIEW', 'NO_SHOW');
 
 -- CreateEnum
@@ -205,6 +208,25 @@ CREATE TABLE "candidates" (
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "candidates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "medical_records" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "center" TEXT,
+    "appointment_date" TIMESTAMP(3),
+    "exam_date" TIMESTAMP(3),
+    "result" TEXT,
+    "fit_date" TIMESTAMP(3),
+    "expiry_date" TIMESTAMP(3),
+    "fit_card_file_id" TEXT,
+    "status" "MedicalStatus" NOT NULL DEFAULT 'PENDING',
+    "is_current" BOOLEAN NOT NULL DEFAULT true,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "medical_records_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -409,6 +431,9 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE INDEX "medical_records_candidate_id_idx" ON "medical_records"("candidate_id");
+
+-- CreateIndex
 CREATE INDEX "visas_candidate_id_idx" ON "visas"("candidate_id");
 
 -- CreateIndex
@@ -491,6 +516,12 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_fit_card_file_id_fkey" FOREIGN KEY ("fit_card_file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "visas" ADD CONSTRAINT "visas_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
