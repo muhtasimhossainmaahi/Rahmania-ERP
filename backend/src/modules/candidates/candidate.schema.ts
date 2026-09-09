@@ -22,9 +22,15 @@ export const createCandidateSchema = z.object({
   positionId: z.string().uuid().optional(),
   assignedEmployeeId: z.string().uuid().optional(),
   currentStatus: z.nativeEnum(CandidateStatus).optional(),
+  // Only meaningful when the duplicate-passport Setting is WARN: resubmit
+  // with this set to true to proceed past the warning for a genuine
+  // re-registration case.
+  confirmDuplicate: z.boolean().optional(),
 });
 
-export const updateCandidateSchema = createCandidateSchema.omit({ currentStatus: true }).partial();
+export const updateCandidateSchema = createCandidateSchema
+  .omit({ currentStatus: true })
+  .partial();
 
 export const changeStatusSchema = z.object({
   status: z.nativeEnum(CandidateStatus),

@@ -4,6 +4,7 @@ import { AuditContext, writeAuditLog } from "../../lib/auditLog";
 import { generateCandidateCode } from "../../lib/businessId";
 import { PaginationParams } from "../../lib/pagination";
 import { normalizePassport } from "../../lib/passport";
+import { getDuplicatePassportMode } from "../../lib/settings";
 import { HttpError } from "../../middleware/errorHandler";
 import { CreateCandidateInput, UpdateCandidateInput } from "./candidate.schema";
 import { isStandardTransition } from "./candidateStatus";
@@ -128,30 +129,49 @@ async function assertReferencesValid(input: {
   }
 }
 
-// SRS 21 calls for duplicate passport detection to be a warning-or-block
-// admin toggle; there's no Setting-driven config wired up yet, so this
-// hard-blocks by default (the safer of the two) until that toggle exists.
-async function assertPassportNotDuplicate(passportNo: string, excludeId?: string) {
+// SRS 21: duplicate passport detection is a warn-or-block admin toggle
+// (candidate.duplicate_passport_mode in the Setting table, managed via
+// PUT /settings/duplicate-passport-mode). BLOCK never allows a duplicate
+// through. WARN surfaces the same 409 on the first attempt, but a second
+// request with confirmDuplicate: true proceeds — a genuine re-registration
+// case shouldn't be permanently stuck, just require an explicit
+// acknowledgement. Returns whether this create/update is a confirmed
+// duplicate override, so callers can note it in the audit log.
+async function checkPassportDuplicate(
+  passportNo: string,
+  confirmDuplicate: boolean | undefined,
+  excludeId?: string,
+): Promise<{ overrodeDuplicate: boolean }> {
   const existing = await prisma.candidate.findFirst({ where: { passportNo } });
-  if (existing && existing.id !== excludeId) {
+  if (!existing || existing.id === excludeId) {
+    return { overrodeDuplicate: false };
+  }
+
+  const mode = await getDuplicatePassportMode();
+  if (mode === "BLOCK" || !confirmDuplicate) {
     throw new HttpError(
       409,
-      `Passport number already registered to candidate ${existing.candidateCode}`,
+      mode === "BLOCK"
+        ? `Passport number already registered to candidate ${existing.candidateCode}`
+        : `Passport number already registered to candidate ${existing.candidateCode}. Resubmit with confirmDuplicate: true to proceed anyway.`,
     );
   }
+
+  return { overrodeDuplicate: true };
 }
 
 export async function createCandidate(input: CreateCandidateInput, context: AuditContext) {
-  const passportNo = normalizePassport(input.passportNo);
-  await assertPassportNotDuplicate(passportNo);
-  await assertReferencesValid(input);
+  const { confirmDuplicate, ...fields } = input;
+  const passportNo = normalizePassport(fields.passportNo);
+  const { overrodeDuplicate } = await checkPassportDuplicate(passportNo, confirmDuplicate);
+  await assertReferencesValid(fields);
 
   const candidateCode = await generateCandidateCode();
-  const initialStatus = input.currentStatus ?? CandidateStatus.REGISTERED;
+  const initialStatus = fields.currentStatus ?? CandidateStatus.REGISTERED;
 
   const candidate = await prisma.candidate.create({
     data: {
-      ...input,
+      ...fields,
       passportNo,
       candidateCode,
       currentStatus: initialStatus,
@@ -170,7 +190,7 @@ export async function createCandidate(input: CreateCandidateInput, context: Audi
 
   await writeAuditLog({
     ...context,
-    action: "CANDIDATE_CREATED",
+    action: overrodeDuplicate ? "CANDIDATE_CREATED_DUPLICATE_CONFIRMED" : "CANDIDATE_CREATED",
     entityType: "Candidate",
     entityId: candidate.id,
     after: candidate,
@@ -189,23 +209,25 @@ export async function updateCandidate(
     throw new HttpError(404, "Candidate not found");
   }
 
-  const data = { ...input };
-  if (input.passportNo) {
-    data.passportNo = normalizePassport(input.passportNo);
-    await assertPassportNotDuplicate(data.passportNo, id);
+  const { confirmDuplicate, ...fields } = input;
+  const data = { ...fields };
+  let overrodeDuplicate = false;
+  if (fields.passportNo) {
+    data.passportNo = normalizePassport(fields.passportNo);
+    ({ overrodeDuplicate } = await checkPassportDuplicate(data.passportNo, confirmDuplicate, id));
   }
   await assertReferencesValid({
-    agentId: input.agentId,
-    demandId: input.demandId,
-    positionId: input.positionId,
-    assignedEmployeeId: input.assignedEmployeeId,
+    agentId: fields.agentId,
+    demandId: fields.demandId,
+    positionId: fields.positionId,
+    assignedEmployeeId: fields.assignedEmployeeId,
   });
 
   const candidate = await prisma.candidate.update({ where: { id }, data });
 
   await writeAuditLog({
     ...context,
-    action: "CANDIDATE_UPDATED",
+    action: overrodeDuplicate ? "CANDIDATE_UPDATED_DUPLICATE_CONFIRMED" : "CANDIDATE_UPDATED",
     entityType: "Candidate",
     entityId: candidate.id,
     before,

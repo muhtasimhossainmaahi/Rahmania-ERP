@@ -11,6 +11,7 @@ import { countryRouter } from "./modules/countries/country.routes";
 import { demandRouter } from "./modules/demands/demand.routes";
 import { departmentRouter } from "./modules/departments/department.routes";
 import { fileRouter } from "./modules/files/file.routes";
+import { settingsRouter } from "./modules/settings/settings.routes";
 
 export function createApp() {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp() {
   app.use("/agents", agentRouter);
   app.use("/demands", demandRouter);
   app.use("/candidates", candidateRouter);
+  app.use("/settings", settingsRouter);
 
   app.use(errorHandler);
 
