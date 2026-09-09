@@ -80,6 +80,7 @@ model Country {
   isActive Boolean @default(true) @map("status")
 
   documentTypes DocumentType[]
+  companies     Company[]
 
   @@map("countries")
 }
@@ -106,4 +107,40 @@ model Setting {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+model FileRegistry {
+  id           String    @id @default(uuid())
+  storageKey   String    @unique @map("storage_key")
+  originalName String    @map("original_name")
+  mimeType     String    @map("mime_type")
+  size         Int
+  checksum     String?
+  uploadedBy   String    @map("uploaded_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  archivedAt   DateTime? @map("archived_at")
+
+  companies Company[]
+
+  @@map("file_registry")
+}
+
+model Company {
+  id              String  @id @default(uuid())
+  companyCode     String  @unique @map("company_code")
+  name            String
+  countryId       String  @map("country_id")
+  address         String?
+  contactPerson   String? @map("contact_person")
+  phone           String?
+  email           String?
+  registrationNo  String? @map("registration_no")
+  agreementFileId String? @map("agreement_file_id")
+  isActive        Boolean @default(true) @map("status")
+
+  country       Country       @relation(fields: [countryId], references: [id])
+  agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
+
+  @@index([name])
+  @@map("companies")
 }

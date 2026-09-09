@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 
 export class HttpError extends Error {
@@ -18,6 +19,10 @@ export function errorHandler(
 ) {
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "Validation failed", details: err.flatten() });
+  }
+
+  if (err instanceof MulterError) {
+    return res.status(413).json({ error: err.message });
   }
 
   const status = err instanceof HttpError ? err.status : 500;

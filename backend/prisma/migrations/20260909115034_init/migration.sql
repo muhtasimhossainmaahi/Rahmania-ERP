@@ -80,6 +80,38 @@ CREATE TABLE "settings" (
     CONSTRAINT "settings_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "file_registry" (
+    "id" TEXT NOT NULL,
+    "storage_key" TEXT NOT NULL,
+    "original_name" TEXT NOT NULL,
+    "mime_type" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "checksum" TEXT,
+    "uploaded_by" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "archived_at" TIMESTAMP(3),
+
+    CONSTRAINT "file_registry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "companies" (
+    "id" TEXT NOT NULL,
+    "company_code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "country_id" TEXT NOT NULL,
+    "address" TEXT,
+    "contact_person" TEXT,
+    "phone" TEXT,
+    "email" TEXT,
+    "registration_no" TEXT,
+    "agreement_file_id" TEXT,
+    "status" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_employee_code_key" ON "users"("employee_code");
 
@@ -98,6 +130,15 @@ CREATE UNIQUE INDEX "countries_code_key" ON "countries"("code");
 -- CreateIndex
 CREATE UNIQUE INDEX "settings_setting_key_key" ON "settings"("setting_key");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "file_registry_storage_key_key" ON "file_registry"("storage_key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "companies_company_code_key" ON "companies"("company_code");
+
+-- CreateIndex
+CREATE INDEX "companies_name_idx" ON "companies"("name");
+
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -109,3 +150,9 @@ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "document_types" ADD CONSTRAINT "document_types_country_id_fkey" FOREIGN KEY ("country_id") REFERENCES "countries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "companies" ADD CONSTRAINT "companies_country_id_fkey" FOREIGN KEY ("country_id") REFERENCES "countries"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "companies" ADD CONSTRAINT "companies_agreement_file_id_fkey" FOREIGN KEY ("agreement_file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;

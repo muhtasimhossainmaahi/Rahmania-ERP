@@ -4,8 +4,10 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { errorHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth/auth.routes";
+import { companyRouter } from "./modules/companies/company.routes";
 import { countryRouter } from "./modules/countries/country.routes";
 import { departmentRouter } from "./modules/departments/department.routes";
+import { fileRouter } from "./modules/files/file.routes";
 
 export function createApp() {
   const app = express();
@@ -22,6 +24,8 @@ export function createApp() {
   app.use("/auth", authRouter);
   app.use("/countries", countryRouter);
   app.use("/departments", departmentRouter);
+  app.use("/files", fileRouter);
+  app.use("/companies", companyRouter);
 
   app.use(errorHandler);
 
