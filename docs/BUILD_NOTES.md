@@ -9,26 +9,7 @@ is flagged.
 
 ## Open
 
-### 1. Ready-to-Depart prerequisite gate is not implemented yet
-- **Spec**: SRS 15 — "Ready to Depart must check mandatory prerequisites:
-  valid passport, required visa, medical fit, required police clearance,
-  BMET/manpower clearance, contract and ticket."
-- **Current state**: `TICKETING → READY_TO_DEPART` in
-  `candidateStatus.ts` is a plain standard transition with no validation
-  at all. Any of the five prerequisite modules (Visa, Medical, Police
-  Clearance, BMET, Contract) plus Ticket don't exist yet, so the check
-  can't be written.
-- **To close**: when building the Ticket/Departure module (build-order
-  step 15), the transition into `READY_TO_DEPART` must verify all six:
-  valid (non-expired) passport, an approved/received Visa record, a Fit
-  Medical record, a Received Police Clearance, a cleared BMET record, a
-  signed Contract, and a Ticket — not just Ticket completion. An
-  authorized override (Super Admin/Management + mandatory reason, same
-  pattern as the existing status-override mechanism) should still be
-  available per SRS 15's "any override... requires authorized management
-  permission and a mandatory reason."
-
-### 2. DocumentType has no CRUD module
+### 1. DocumentType has no CRUD module
 - **Spec**: SRS 8.6 / S23 — document types configurable by
   country/company/position; managed from the Settings screen.
 - **Current state**: schema-only since step 1. The CandidateDocument
@@ -39,7 +20,7 @@ is flagged.
   pattern (mutations Super-Admin-only, read open to authenticated users),
   likely alongside the Settings module.
 
-### 3. Company and Agent only support a single agreement file, not a full document set
+### 2. Company and Agent only support a single agreement file, not a full document set
 - **Spec**: SRS 8.2 — "Attach company-level documents and agreements"
   (plural). Section 9's DB design table, however, only lists a single
   `agreement_file_id` column on both `companies` and `agents`.
@@ -51,7 +32,7 @@ is flagged.
   table), not just new routes. Flagging since the functional text and
   the DB table disagree on cardinality.
 
-### 4. Auth module doesn't cover password reset or MFA
+### 3. Auth module doesn't cover password reset or MFA
 - **Spec**: SRS 8.1 — "Login, logout, password reset and optional MFA."
 - **Current state**: login/logout (via JWT expiry) and registration
   exist. No password-reset flow (e.g. emailed reset token) and no MFA of
@@ -62,7 +43,7 @@ is flagged.
   (TOTP is the common low-effort choice) plus a `mfaEnabled`/secret field
   on `User`.
 
-### 5. No dedicated session/device management
+### 4. No dedicated session/device management
 - **Spec**: SRS 8.1 — "Session/device/security logging."
 - **Current state**: partially covered — every action's IP and user
   agent are captured in `AuditLog` via `AuditContext`. There's no "list
@@ -72,7 +53,7 @@ is flagged.
   today) if the client wants users to see/revoke their own active
   sessions.
 
-### 6. Demand recruitment progress isn't computed anywhere
+### 5. Demand recruitment progress isn't computed anywhere
 - **Spec**: SRS 8.3 — "Show recruitment progress and shortage/excess
   against requirement."
 - **Current state**: `DemandPosition.requiredQty` exists; nothing
@@ -82,7 +63,7 @@ is flagged.
   progress) or deferred to the Reports/Dashboard build-order step — worth
   a decision either way rather than leaving it implicit.
 
-### 7. Company dashboard aggregation not built
+### 6. Company dashboard aggregation not built
 - **Spec**: SRS 8.2 — "Company dashboard showing demands, candidate
   pipeline, departures and financial status."
 - **Current state**: not built. Depends on Demand + Candidate (both now
@@ -90,7 +71,7 @@ is flagged.
 - **To close**: belongs in the Reports/Dashboard build-order step, once
   Accounts (Transaction/Invoice) exists for the financial-status part.
 
-### 8. Mobile number validation is minimal
+### 7. Mobile number validation is minimal
 - **Spec**: SRS 21 — "Validate mobile numbers by configured country
   rules."
 - **Current state**: only a bare length check (`min(3)` in Zod) on every
@@ -101,7 +82,7 @@ is flagged.
   concrete country's rule is actually requested, to avoid guessing at a
   format.
 
-### 9. Department-level access scoping is not implemented
+### 8. Department-level access scoping is not implemented
 - **Spec**: SRS 15 — "Employees may edit only modules permitted by their
   role and department."
 - **Current state**: read as role-based module access (already covered
@@ -114,7 +95,7 @@ is flagged.
   module-level role gating. Flagging the interpretation rather than
   silently assuming it's out of scope.
 
-### 10. Printable passport receipt / hand-over acknowledgement PDF
+### 9. Printable passport receipt / hand-over acknowledgement PDF
 - **Spec**: SRS 8.7 — "Generate printable passport receipt/hand-over
   acknowledgement."
 - **Current state**: the PassportMovement module has the underlying data
@@ -126,7 +107,7 @@ is flagged.
   app's PDF-generation capability will land. Not a data-model gap, just
   a presentation layer not built yet.
 
-### 11. Passport custody overdue threshold (3 days) needs sign-off from operations staff
+### 10. Passport custody overdue threshold (3 days) needs sign-off from operations staff
 - **Spec**: SRS 8.7 — "Flag overdue custody," no threshold given.
 - **Current state**: defaults to 3 days unacknowledged
   (`passport.custody_overdue_days` in the `Setting` table), a value I
@@ -141,7 +122,7 @@ is flagged.
   confirmed, update via `PUT /settings/passport-custody-overdue-days`
   (no code change needed, just the value).
 
-### 12. Interview result vs. candidate status can silently drift out of sync
+### 11. Interview result vs. candidate status can silently drift out of sync
 - **Spec**: SRS 8.5 — "System calculates/flags the next required stage."
 - **Current state**: recording an InterviewCandidate result (e.g.
   SELECTED) does not touch the candidate's own `currentStatus` — they're
@@ -162,7 +143,7 @@ is flagged.
   when they disagree. Whichever is chosen, it should be a considered
   product decision, not something assumed in code.
 
-### 13. InterviewCandidate removal is a hard delete, unlike Documents
+### 12. InterviewCandidate removal is a hard delete, unlike Documents
 - **Spec**: no explicit SRS rule for removing an interview assignment
   specifically, but SRS 8.6 and the general audit-trail principle
   (8.17) favor archive/soft-delete over permanent deletion elsewhere in
@@ -181,7 +162,7 @@ is flagged.
   "record-like" than a document), but that reasoning wasn't validated
   against how the rest of the system treats removal.
 
-### 14. Expiry alerting is not implemented for any expiry-bearing record
+### 13. Expiry alerting is not implemented for any expiry-bearing record
 - **Spec**: SRS 15 — "Document expiry must generate configurable alerts,
   e.g. 30/15/7 days before expiry" (general rule, not module-specific);
   SRS 8.9 — "Alert on visa expiry and pending cases."
@@ -231,3 +212,28 @@ is flagged.
   Candidate-browsing access to get that context otherwise. If Rahmania
   confirms the matrix was correct as written, revert
   `medicalRecord.routes.ts`'s MUTATE_ROLES to Admin + Embassy.
+- **Ready-to-Depart prerequisite gate** (was open item 1) — implemented
+  in `candidatePrerequisites.ts`, wired into `changeCandidateStatus`.
+  Per explicit user decision: Visa/BmetRecord/Contract carry a free-text
+  `status` with no fixed vocabulary, so their completion is read off a
+  structural date field instead of string-matching — `issueDate` set and
+  `expiryDate` null-or-future for Visa, `clearanceDate` set for
+  BmetRecord, `signedDate` set for Contract. MedicalRecord and
+  PoliceClearance already have real enums, so those are checked directly
+  (`FIT`; `RECEIVED` or `NOT_REQUIRED`). Ticket requires `ticketNo` and
+  `departureDatetime`. `Candidate.passportExpiry` must be null or future.
+  Every reprocessing-based check (Visa/Medical/Police/BMET) reads only
+  the `isCurrent: true` row — confirmed by test: a historically-valid
+  Visa superseded by a currently-invalid one is correctly ignored, and
+  the gate fails on visa alone. A missing prerequisite doesn't hard-block;
+  it requires the same Super Admin/Management + mandatory-reason override
+  mechanism as a non-standard status transition (SRS 15: "Any override of
+  a mandatory prerequisite requires authorized management permission and
+  a mandatory reason"), logged under a distinct audit action
+  (`CANDIDATE_STATUS_CHANGED_PREREQUISITE_OVERRIDE`) recording which
+  prerequisites were bypassed (`overriddenPrerequisites`) and why
+  (`overrideReason`). The pre-existing SELECTED-requires-positionId check
+  was folded into the same mechanism for consistency — it was previously
+  an unconditional 400 with no override path, which didn't match SRS 15's
+  "mandatory prerequisite" framing. See the Ticket/Departure module
+  commit.
