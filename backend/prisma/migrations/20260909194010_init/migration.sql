@@ -208,6 +208,22 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "contracts" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "contract_no" TEXT NOT NULL,
+    "contract_date" TIMESTAMP(3) NOT NULL,
+    "salary" DECIMAL(65,30),
+    "currency" TEXT,
+    "duration" TEXT,
+    "file_id" TEXT,
+    "signed_date" TIMESTAMP(3),
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+
+    CONSTRAINT "contracts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "interview_events" (
     "id" TEXT NOT NULL,
     "event_code" TEXT NOT NULL,
@@ -342,6 +358,12 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "contracts_candidate_id_key" ON "contracts"("candidate_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "contracts_contract_no_key" ON "contracts"("contract_no");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "interview_events_event_code_key" ON "interview_events"("event_code");
 
 -- CreateIndex
@@ -409,6 +431,12 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contracts" ADD CONSTRAINT "contracts_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contracts" ADD CONSTRAINT "contracts_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "interview_events" ADD CONSTRAINT "interview_events_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

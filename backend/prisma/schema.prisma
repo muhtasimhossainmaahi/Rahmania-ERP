@@ -132,6 +132,7 @@ model FileRegistry {
   agents             Agent[]
   candidateDocuments CandidateDocument[]
   passportMovements  PassportMovement[]
+  contracts          Contract[]
 
   @@map("file_registry")
 }
@@ -292,12 +293,31 @@ model Candidate {
   documents         CandidateDocument[]
   passportMovements PassportMovement[]
   interviews        InterviewCandidate[]
+  contract          Contract?
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+model Contract {
+  id           String    @id @default(uuid())
+  candidateId  String    @unique @map("candidate_id")
+  contractNo   String    @unique @map("contract_no")
+  contractDate DateTime  @map("contract_date")
+  salary       Decimal?
+  currency     String?
+  duration     String?
+  fileId       String?   @map("file_id")
+  signedDate   DateTime? @map("signed_date")
+  status       String    @default("PENDING")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@map("contracts")
 }
 
 enum InterviewResult {
