@@ -165,23 +165,38 @@ is flagged.
   "record-like" than a document), but that reasoning wasn't validated
   against how the rest of the system treats removal.
 
-### 13. Expiry alerting is not implemented for any expiry-bearing record
-- **Spec**: SRS 15 — "Document expiry must generate configurable alerts,
-  e.g. 30/15/7 days before expiry" (general rule, not module-specific);
-  SRS 8.9 — "Alert on visa expiry and pending cases."
-- **Current state**: expiry dates are tracked and queryable
+### 13. Background Jobs infra doesn't exist — every time-based SRS 16 trigger is blocked on it
+- **Spec**: SRS 19 recommends "Redis + queue worker or equivalent for
+  reminders/reports" as its own architecture layer. SRS 16's Notifications
+  & Automation table lists several triggers that require periodically
+  re-checking state rather than reacting to a single write:
+  expiry alerts ("Document expiry must generate configurable alerts, e.g.
+  30/15/7 days before expiry" — SRS 15; "Alert on visa expiry and pending
+  cases" — SRS 8.9) across every expiry-bearing record
   (`CandidateDocument.expiryDate`, `Candidate.passportExpiry`,
-  `Visa.expiryDate`, and later `MedicalRecord`/`PoliceClearance`/
-  `Contract` will have their own), but nothing generates an actual
-  alert/notification as a date approaches. No Setting exists yet for the
-  30/15/7-day thresholds either.
-- **To close**: belongs with the Tasks & Notifications module (SRS
-  8.15) — a scheduled job or query that scans all expiry-bearing tables
-  and creates `Notification` rows (or `Task`s) for records crossing the
-  configured thresholds. One general-purpose piece of work, not
-  something to build per-module; this note exists so it isn't
-  forgotten once Notifications is reached, given how many modules by
-  then will have an expiry date sitting unused for this purpose.
+  `Visa.expiryDate`, `MedicalRecord.expiryDate`,
+  `PoliceClearance.expiryDate`), "Task overdue -> Escalate notification ->
+  Assignee + Department Manager", and "Passport overdue with custodian ->
+  Critical alert -> Custodian + Operations Manager" (the
+  `passport.custody_overdue_days` Setting from item 10 already defines the
+  threshold this would check against).
+- **Current state**: the Task and Notification modules now exist
+  (`Notification` model, `notifyUsers`/`notifyRoles` helpers in
+  `notification.service.ts`, read/mark-read endpoints), and four
+  event-driven SRS 16 triggers are wired synchronously into existing
+  write paths that fire once and don't need a scheduler (see the Resolved
+  entry below). But nothing periodically re-scans state, because there is
+  no job runner in this stack — no Redis, no queue worker, no cron. Per
+  explicit user decision, no stopgap poller (e.g. `setInterval`) was
+  built as a substitute; it would just need to be redone properly once
+  real infra exists.
+- **To close**: per explicit user instruction, when Background Jobs is
+  planned it should cover ALL of these time-based triggers together as
+  one piece of infra, not piecemeal — expiry alerts (all five tables
+  above, at the 30/15/7-day thresholds), task-overdue escalation, and
+  passport-custody-overdue, all reusing the existing
+  `notifyUsers`/`notifyRoles` helpers to actually create the
+  `Notification` rows once a schedule can drive them.
 
 ## Resolved
 
@@ -262,3 +277,54 @@ is flagged.
   whether to strip `ACCOUNTS` from the enum entirely (a breaking change
   for any already-seeded/registered Accounts users) or leave it inert is
   a decision explicitly deferred by the user to a later date.
+- **Task + Notification modules built; SRS 16 automation scoped to
+  event-driven triggers only** — per explicit user decision, this step
+  covered: Task CRUD (create/assign restricted to Super Admin/Management/
+  Operations, matching section 6's Operations narrative; read and status-
+  change open to every role, scoped to the caller's own assigned tasks
+  unless they're a manager); Notification infra (model, `notifyUsers`/
+  `notifyRoles` helpers, list-mine/mark-read/mark-all-read endpoints,
+  scoped strictly to the caller — no cross-user visibility, not even for
+  Super Admin); and four of SRS 16's triggers wired synchronously into
+  existing write paths, since they fire once off a real event and need no
+  scheduler:
+  - Visa received -> Operations + Embassy (`visa.service.ts`, fires when
+    the current Visa's `issueDate` goes from unset to set — the same
+    structural "received" signal the Ready-to-Depart gate uses, avoiding
+    the free-text `status` field).
+  - BMET completed -> Manpower + Operations (`bmetRecord.service.ts`,
+    fires when `clearanceDate` goes from unset to set, same reasoning).
+  - Candidate marked Ready -> Operations + Management
+    (`candidate.service.ts`, fires on a successful transition to
+    `READY_TO_DEPART`).
+  - Departure completed -> Management (`candidate.service.ts`, fires on a
+    successful transition to `DEPARTED`; the original row's "+ Accounts"
+    recipient was already dropped in the Finance descope above).
+
+  Two judgment calls, not explicitly specified anywhere in the SRS:
+  - **Recipient resolution**: SRS 16 names recipients by role ("Operations/
+    Embassy", "Manpower + Operations", etc.), not by a specific user, and
+    neither the DB design nor section 6 defines a "department manager"
+    distinct from a role. `notifyRoles()` broadcasts to every active user
+    holding the named role(s) — one `Notification` row per matching user.
+    If Rahmania actually wants a single designated recipient per event
+    (e.g. the candidate's own `assignedEmployeeId`, or each user's
+    `managerId` for "Department Manager"-style recipients) rather than an
+    all-hands broadcast, this needs revisiting.
+  - **TaskPriority/TaskStatus enum values**: SRS 8.15 says only "Priority,
+    deadline, status and remarks" with no vocabulary given (unlike, say,
+    `PoliceClearanceStatus`). Picked `LOW/MEDIUM/HIGH/URGENT` and
+    `PENDING/IN_PROGRESS/COMPLETED/CANCELLED` as reasonable defaults.
+
+  **"Demand below target" (SRS 16) intentionally NOT wired** — unlike the
+  four above, its own System Action is "Show shortage KPI," which is
+  dashboard/reporting language, not a single-event notification; firing a
+  `Notification` every time a write leaves a position understaffed (true
+  for most of a demand's life before it's fully filled) would spam rather
+  than alert. It also depends on demand-progress aggregation, which open
+  item 5/6 already flags as unbuilt. This belongs with the Dashboard/
+  Reports build-order step, not the Notification event system — flagging
+  the scope call rather than silently dropping it.
+
+  See open item 13 (renamed to Background Jobs infra) for the remaining
+  time-based SRS 16 triggers this step deliberately left unwired.
