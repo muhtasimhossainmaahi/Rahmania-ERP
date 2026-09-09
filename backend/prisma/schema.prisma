@@ -138,6 +138,7 @@ model FileRegistry {
   embassyRecords     EmbassyRecord[]
   medicalRecords     MedicalRecord[]
   policeClearances   PoliceClearance[]
+  bmetRecords        BmetRecord[]
 
   @@map("file_registry")
 }
@@ -304,12 +305,34 @@ model Candidate {
   embassyRecords    EmbassyRecord[]
   medicalRecords    MedicalRecord[]
   policeClearances  PoliceClearance[]
+  bmetRecords       BmetRecord[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+model BmetRecord {
+  id             String    @id @default(uuid())
+  candidateId    String    @map("candidate_id")
+  contractStatus String?   @map("contract_status")
+  registrationNo String?   @map("registration_no")
+  submissionDate DateTime? @map("submission_date")
+  clearanceDate  DateTime? @map("clearance_date")
+  smartCardNo    String?   @map("smart_card_no")
+  status         String    @default("PENDING")
+  fileId         String?   @map("file_id")
+  isCurrent      Boolean   @default(true) @map("is_current")
+  remarks        String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@map("bmet_records")
 }
 
 enum PoliceClearanceStatus {

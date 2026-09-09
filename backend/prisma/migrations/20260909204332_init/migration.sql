@@ -214,6 +214,24 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "bmet_records" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "contract_status" TEXT,
+    "registration_no" TEXT,
+    "submission_date" TIMESTAMP(3),
+    "clearance_date" TIMESTAMP(3),
+    "smart_card_no" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "file_id" TEXT,
+    "is_current" BOOLEAN NOT NULL DEFAULT true,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "bmet_records_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "police_clearances" (
     "id" TEXT NOT NULL,
     "candidate_id" TEXT NOT NULL,
@@ -451,6 +469,9 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE INDEX "bmet_records_candidate_id_idx" ON "bmet_records"("candidate_id");
+
+-- CreateIndex
 CREATE INDEX "police_clearances_candidate_id_idx" ON "police_clearances"("candidate_id");
 
 -- CreateIndex
@@ -539,6 +560,12 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bmet_records" ADD CONSTRAINT "bmet_records_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bmet_records" ADD CONSTRAINT "bmet_records_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "police_clearances" ADD CONSTRAINT "police_clearances_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
