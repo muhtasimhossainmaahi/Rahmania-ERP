@@ -32,3 +32,19 @@ export async function getDuplicatePassportMode(): Promise<DuplicatePassportMode>
 export async function setDuplicatePassportMode(mode: DuplicatePassportMode, updatedBy: string) {
   return upsertSetting(DUPLICATE_PASSPORT_MODE_KEY, mode, "enum", updatedBy);
 }
+
+const PASSPORT_CUSTODY_OVERDUE_DAYS_KEY = "passport.custody_overdue_days";
+const DEFAULT_PASSPORT_CUSTODY_OVERDUE_DAYS = 3;
+
+// SRS 8.7: "Flag overdue custody" — no threshold is specified, so it's
+// admin-configurable via the same Setting-table pattern as the
+// duplicate-passport mode, defaulting to 3 days unacknowledged.
+export async function getPassportCustodyOverdueDays(): Promise<number> {
+  const value = await getSetting(PASSPORT_CUSTODY_OVERDUE_DAYS_KEY);
+  const parsed = value ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PASSPORT_CUSTODY_OVERDUE_DAYS;
+}
+
+export async function setPassportCustodyOverdueDays(days: number, updatedBy: string) {
+  return upsertSetting(PASSPORT_CUSTODY_OVERDUE_DAYS_KEY, String(days), "number", updatedBy);
+}

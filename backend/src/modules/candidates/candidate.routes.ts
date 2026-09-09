@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate";
 import { requireRole } from "../../middleware/requireRole";
 import { candidateDocumentRouter } from "../candidateDocuments/candidateDocument.routes";
+import { passportMovementRouter } from "../passportMovements/passportMovement.routes";
 import { changeStatus, create, getOne, list, update } from "./candidate.controller";
 
 export const candidateRouter = Router();
@@ -35,3 +36,4 @@ candidateRouter.patch("/:id", requireRole(...MUTATE_ROLES), update);
 candidateRouter.patch("/:id/status", requireRole(...MUTATE_ROLES), changeStatus);
 
 candidateRouter.use("/:candidateId/documents", candidateDocumentRouter);
+candidateRouter.use("/:candidateId/passport-movements", passportMovementRouter);

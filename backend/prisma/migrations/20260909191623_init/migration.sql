@@ -202,6 +202,23 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "passport_movements" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "from_user_id" TEXT,
+    "to_user_id" TEXT,
+    "from_location" TEXT,
+    "to_location" TEXT,
+    "handed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "received_at" TIMESTAMP(3),
+    "purpose" TEXT,
+    "acknowledgement_file" TEXT,
+    "remarks" TEXT,
+
+    CONSTRAINT "passport_movements_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "candidate_documents" (
     "id" TEXT NOT NULL,
     "candidate_id" TEXT NOT NULL,
@@ -288,6 +305,9 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE INDEX "passport_movements_candidate_id_idx" ON "passport_movements"("candidate_id");
+
+-- CreateIndex
 CREATE INDEX "candidate_documents_candidate_id_idx" ON "candidate_documents"("candidate_id");
 
 -- CreateIndex
@@ -340,6 +360,18 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "passport_movements" ADD CONSTRAINT "passport_movements_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "passport_movements" ADD CONSTRAINT "passport_movements_from_user_id_fkey" FOREIGN KEY ("from_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "passport_movements" ADD CONSTRAINT "passport_movements_to_user_id_fkey" FOREIGN KEY ("to_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "passport_movements" ADD CONSTRAINT "passport_movements_acknowledgement_file_fkey" FOREIGN KEY ("acknowledgement_file") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "candidate_documents" ADD CONSTRAINT "candidate_documents_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

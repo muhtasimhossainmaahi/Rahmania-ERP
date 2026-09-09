@@ -1,8 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { auditContext } from "../../lib/auditContext";
 import { writeAuditLog } from "../../lib/auditLog";
-import { getDuplicatePassportMode, setDuplicatePassportMode } from "../../lib/settings";
-import { duplicatePassportModeSchema } from "./settings.schema";
+import {
+  getDuplicatePassportMode,
+  getPassportCustodyOverdueDays,
+  setDuplicatePassportMode,
+  setPassportCustodyOverdueDays,
+} from "../../lib/settings";
+import { duplicatePassportModeSchema, passportCustodyOverdueDaysSchema } from "./settings.schema";
 
 export async function getDuplicatePassportModeHandler(
   _req: Request,
@@ -36,6 +41,43 @@ export async function updateDuplicatePassportModeHandler(
     });
 
     res.json({ mode: input.mode });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPassportCustodyOverdueDaysHandler(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    res.json({ days: await getPassportCustodyOverdueDays() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updatePassportCustodyOverdueDaysHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const before = await getPassportCustodyOverdueDays();
+    const input = passportCustodyOverdueDaysSchema.parse(req.body);
+    await setPassportCustodyOverdueDays(input.days, req.user!.id);
+
+    await writeAuditLog({
+      ...auditContext(req),
+      action: "SETTING_UPDATED",
+      entityType: "Setting",
+      entityId: "passport.custody_overdue_days",
+      before: { days: before },
+      after: { days: input.days },
+    });
+
+    res.json({ days: input.days });
   } catch (err) {
     next(err);
   }
