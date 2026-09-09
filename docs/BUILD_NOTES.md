@@ -194,9 +194,37 @@ is flagged.
   "record-like" than a document), but that reasoning wasn't validated
   against how the rest of the system treats removal.
 
+### 15. Expiry alerting is not implemented for any expiry-bearing record
+- **Spec**: SRS 15 — "Document expiry must generate configurable alerts,
+  e.g. 30/15/7 days before expiry" (general rule, not module-specific);
+  SRS 8.9 — "Alert on visa expiry and pending cases."
+- **Current state**: expiry dates are tracked and queryable
+  (`CandidateDocument.expiryDate`, `Candidate.passportExpiry`,
+  `Visa.expiryDate`, and later `MedicalRecord`/`PoliceClearance`/
+  `Contract` will have their own), but nothing generates an actual
+  alert/notification as a date approaches. No Setting exists yet for the
+  30/15/7-day thresholds either.
+- **To close**: belongs with the Tasks & Notifications module (SRS
+  8.15) — a scheduled job or query that scans all expiry-bearing tables
+  and creates `Notification` rows (or `Task`s) for records crossing the
+  configured thresholds. One general-purpose piece of work, not
+  something to build per-module; this note exists so it isn't
+  forgotten once Notifications is reached, given how many modules by
+  then will have an expiry date sitting unused for this purpose.
+
 ## Resolved
 
 - **Duplicate-passport warn-or-block toggle** (SRS 21) — implemented via
   the `Setting` table (`candidate.duplicate_passport_mode`) and
   `PUT /settings/duplicate-passport-mode`. See the Candidate module and
   Settings module commits.
+- **Visa/MOFA role assignment** — section 7's permission matrix lists
+  Visa/MOFA as Marketing=Edit, Embassy=Read, which contradicts section
+  6's role narrative (Embassy's whole job is visa/MOFA/embassy
+  processing; Marketing's narrative has no connection to it). Per
+  explicit user decision, implemented as a transcription error and
+  built per the narrative instead: mutation is Admin + Embassy,
+  Marketing is read-only. Applies to Visa, MofaRecord, and
+  EmbassyRecord (all three share the Visa/MOFA matrix row per SRS 8.9's
+  grouping). If Rahmania confirms the matrix was actually correct as
+  written, this needs to be reverted in all three modules' route files.
