@@ -139,6 +139,21 @@ is flagged.
   app's PDF-generation capability will land. Not a data-model gap, just
   a presentation layer not built yet.
 
+### 12. Passport custody overdue threshold (3 days) needs sign-off from operations staff
+- **Spec**: SRS 8.7 — "Flag overdue custody," no threshold given.
+- **Current state**: defaults to 3 days unacknowledged
+  (`passport.custody_overdue_days` in the `Setting` table), a value I
+  picked as a reasonable placeholder — not something derived from
+  Rahmania's actual process.
+- **To close**: this is a real business parameter (how long is it
+  acceptable for a passport to sit with a custodian before it's flagged
+  as a problem), not a technical detail, and shouldn't ship as an
+  assumed default. Needs confirmation from actual Rahmania operations
+  staff on what the right threshold is — likely different for internal
+  office handoffs vs. external stops like an embassy submission. Once
+  confirmed, update via `PUT /settings/passport-custody-overdue-days`
+  (no code change needed, just the value).
+
 ## Resolved
 
 - **Duplicate-passport warn-or-block toggle** (SRS 21) — implemented via
