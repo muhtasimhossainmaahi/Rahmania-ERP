@@ -8,6 +8,7 @@ import { embassyRecordRouter } from "../embassyRecords/embassyRecord.routes";
 import { medicalRecordRouter } from "../medicalRecords/medicalRecord.routes";
 import { mofaRecordRouter } from "../mofaRecords/mofaRecord.routes";
 import { passportMovementRouter } from "../passportMovements/passportMovement.routes";
+import { policeClearanceRouter } from "../policeClearances/policeClearance.routes";
 import { visaRouter } from "../visas/visa.routes";
 import { changeStatus, create, getOne, list, update } from "./candidate.controller";
 
@@ -47,3 +48,4 @@ candidateRouter.use("/:candidateId/visa", visaRouter);
 candidateRouter.use("/:candidateId/mofa", mofaRecordRouter);
 candidateRouter.use("/:candidateId/embassy", embassyRecordRouter);
 candidateRouter.use("/:candidateId/medical", medicalRecordRouter);
+candidateRouter.use("/:candidateId/police-clearance", policeClearanceRouter);

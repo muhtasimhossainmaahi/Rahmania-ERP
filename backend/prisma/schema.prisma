@@ -137,6 +137,7 @@ model FileRegistry {
   mofaRecords        MofaRecord[]
   embassyRecords     EmbassyRecord[]
   medicalRecords     MedicalRecord[]
+  policeClearances   PoliceClearance[]
 
   @@map("file_registry")
 }
@@ -302,12 +303,42 @@ model Candidate {
   mofaRecords       MofaRecord[]
   embassyRecords    EmbassyRecord[]
   medicalRecords    MedicalRecord[]
+  policeClearances  PoliceClearance[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+enum PoliceClearanceStatus {
+  PENDING
+  SUBMITTED
+  RECEIVED
+  REJECTED
+  EXPIRED
+  NOT_REQUIRED
+}
+
+model PoliceClearance {
+  id              String                @id @default(uuid())
+  candidateId     String                @map("candidate_id")
+  applicationDate DateTime?             @map("application_date")
+  submissionDate  DateTime?             @map("submission_date")
+  issueDate       DateTime?             @map("issue_date")
+  expiryDate      DateTime?             @map("expiry_date")
+  status          PoliceClearanceStatus @default(PENDING)
+  fileId          String?               @map("file_id")
+  isCurrent       Boolean               @default(true) @map("is_current")
+  remarks         String?
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@map("police_clearances")
 }
 
 enum MedicalStatus {
