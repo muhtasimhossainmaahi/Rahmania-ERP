@@ -23,9 +23,9 @@ Recruitment & Manpower Management System
 
 ## 2. Executive Summary
 
-Rahmania Corporation requires a centralized recruitment management platform that connects employers/clients, job demands, agents, candidates, documents, interviews, visa/MOFA, medical, police clearance, BMET/manpower clearance, ticketing, departure and financial records.
+Rahmania Corporation requires a centralized recruitment management platform that connects employers/clients, job demands, agents, candidates, documents, interviews, visa/MOFA, medical, police clearance, BMET/manpower clearance, ticketing and departure. (Finance & Accounting is explicitly excluded — see 4.2/8.14.)
 
-The system must provide a single source of truth. Every candidate must have a unique Candidate ID and every recruitment project must have a unique Demand/Job ID. All activities, documents, status changes, assignments and financial transactions must remain linked and auditable.
+The system must provide a single source of truth. Every candidate must have a unique Candidate ID and every recruitment project must have a unique Demand/Job ID. All activities, documents, status changes and assignments must remain linked and auditable.
 
 The core management principle is: management must be able to open one candidate, one demand, or one company and immediately understand its current status, pending actions, responsible person, history and risk.
 
@@ -38,7 +38,7 @@ The core management principle is: management must be able to open one candidate,
 - Automatically identify pending steps, overdue tasks and document expiries.
 - Measure employee, agent and recruitment campaign performance.
 - Maintain a permanent audit trail of important actions and status changes.
-- Generate operational and financial reports without manual consolidation.
+- Generate operational reports without manual consolidation. (Financial reporting is out of scope — see 4.2/8.14.)
 
 ## 4. Scope
 
@@ -59,7 +59,7 @@ The core management principle is: management must be able to open one candidate,
 - Passport custody/movement
 - Ticket and departure
 - Tasks and notifications
-- Accounts and transactions
+- ~~Accounts and transactions~~ — **descoped, see 4.2 and 8.14**
 - Reports and exports
 - Audit logs
 - System configuration
@@ -68,6 +68,13 @@ The core management principle is: management must be able to open one candidate,
 
 - Direct government-system integration unless API access is officially available
 - Full accounting/ERP replacement
+- **Finance & Accounting, permanently** — candidate receipts/dues, agent
+  commissions/payables, client invoices/receivables, expenses, transaction
+  history, and any financial reporting. Confirmed out of scope entirely —
+  not deferred to a later phase, not a future enhancement. No Transaction,
+  Invoice, or other financial-ledger module will be built. See the former
+  section 8.14, now marked descoped, and `docs/BUILD_NOTES.md` for the
+  resulting status of the Accounts role.
 - Payroll for overseas workers
 - AI decision-making for candidate selection
 - Automatic visa approval prediction
@@ -85,12 +92,12 @@ Exception paths: Rejected, On Hold, Cancelled, Visa Rejected, Medical Unfit, Pas
 | Role | Main Permissions |
 |---|---|
 | Super Admin | Full system access, users, roles, settings, master data, audit logs. |
-| Management / COO | All operational data, dashboards, approvals, reports, financial visibility, audit history; normally no destructive deletion. |
-| Operations | Candidates, documents, status tracking, CV, tasks, reports, passport custody; limited financial access. |
-| Marketing | Candidate sourcing, agent records, job matching, campaign/interview scheduling; no confidential financial/admin records unless granted. |
+| Management / COO | All operational data, dashboards, approvals, reports, audit history; normally no destructive deletion. |
+| Operations | Candidates, documents, status tracking, CV, tasks, reports, passport custody. |
+| Marketing | Candidate sourcing, agent records, job matching, campaign/interview scheduling; no confidential admin records unless granted. |
 | Embassy | Visa, MOFA, Tasheer/appointment and embassy processing; candidate read access as needed. |
 | Manpower | Contracts, BMET, manpower clearance, departure readiness. |
-| Accounts | Candidate receipts, agent payable/commission, client invoices/receivables, expenses and financial reports. |
+| Accounts | ~~Candidate receipts, agent payable/commission, client invoices/receivables, expenses and financial reports.~~ **Descoped — see 4.2/8.14.** This role currently has no functional module; it retains its existing Edit rights on Candidates/Documents (section 7) but has no Finance & Accounting feature behind it. |
 | Medical Representative | Medical appointment/results/fit-card records; cannot alter unrelated recruitment statuses. |
 | Agent | Own submitted candidates, required documents, interview information and permitted status view. |
 | Viewer / Auditor | Read-only access to approved screens and reports. |
@@ -109,12 +116,19 @@ Exception paths: Rejected, On Hold, Cancelled, Visa Rejected, Medical Unfit, Pas
 | Visa/MOFA | F | R | R | E | R | R | R | R |
 | Medical | F | R | R | R | E | R | R | R |
 | BMET/Manpower | F | R | R | R | R | E | R | R |
-| Accounts | F | N | N | N | N | N | E | R |
+| ~~Accounts~~ | — | — | — | — | — | — | — | — |
 | Reports | F | E | E | E | E | E | E | R |
 | Users/Settings | F | N | N | N | N | N | N | N |
 | Audit Logs | F | R | R | R | R | R | R | R |
 
 Legend: F = Full control; E = Create/Edit within role; R = Read-only; N = No access. Exact field-level restrictions must be enforced by backend authorization, not only hidden UI buttons.
+
+The struck-through **Accounts** module row above is the descoped Finance
+& Accounting module (see 4.2/8.14) — not to be confused with the
+**Accounts** role column, which still stands as written (e.g. Edit on
+Candidates/Documents) since that reflects the role's rights over
+recruitment records already implemented in the system, independent of
+the removed financial module.
 
 ## 8. Functional Requirements
 
@@ -129,7 +143,7 @@ Legend: F = Full control; E = Create/Edit within role; R = Read-only; N = No acc
 ### 8.2 Company / Client Management
 
 - Create client/employer profile with country, address, contacts, registration/license and agreements.
-- Company dashboard showing demands, candidate pipeline, departures and financial status.
+- Company dashboard showing demands, candidate pipeline and departures.
 - Attach company-level documents and agreements.
 - Maintain active/inactive status.
 
@@ -144,7 +158,7 @@ Legend: F = Full control; E = Create/Edit within role; R = Read-only; N = No acc
 
 - Unique Candidate ID.
 - Store identity, passport, contact, profession, experience, source, agent, job/demand and company.
-- Candidate profile must show current status, next action, assigned employee, documents, timeline and financial summary.
+- Candidate profile must show current status, next action, assigned employee, documents and timeline.
 - Search by name, passport, Candidate ID, mobile, agent, company, visa number and demand.
 
 ### 8.5 Candidate Lifecycle
@@ -209,14 +223,25 @@ Legend: F = Full control; E = Create/Edit within role; R = Read-only; N = No acc
 - Mark Ready to Depart only when mandatory conditions are satisfied or an authorized manager overrides with reason.
 - Record actual departure and final deployment information.
 
-### 8.14 Accounts
+### 8.14 Accounts — DESCOPED
 
-- Candidate receipts and dues.
-- Agent commissions/payables.
-- Client invoices and receivables.
-- Expenses, adjustments and refunds.
-- Transaction history linked to candidate, agent, company and demand.
-- Financial permissions restricted by role.
+**Finance & Accounting is permanently out of scope for this system —
+confirmed, not deferred, removed.** No Transaction, Invoice, or other
+financial-ledger module will be built, and no financial reporting exists
+or will exist anywhere in the system. The bullets below are struck out
+to preserve the original requirement text for reference only; none of
+them will be implemented.
+
+- ~~Candidate receipts and dues.~~
+- ~~Agent commissions/payables.~~
+- ~~Client invoices and receivables.~~
+- ~~Expenses, adjustments and refunds.~~
+- ~~Transaction history linked to candidate, agent, company and demand.~~
+- ~~Financial permissions restricted by role.~~
+
+The Accounts role (section 6) has no functional module behind it as a
+result. See `docs/BUILD_NOTES.md` for its status — pending a later
+decision on whether to remove it from the Role enum or leave it inert.
 
 ### 8.15 Tasks & Notifications
 
@@ -230,13 +255,14 @@ Legend: F = Full control; E = Create/Edit within role; R = Read-only; N = No acc
 
 - Daily, monthly, company-wise, demand-wise, agent-wise and employee-wise reports.
 - Pipeline conversion and bottleneck analysis.
-- Financial reports.
+- ~~Financial reports.~~ — descoped along with 8.14; no financial data
+  exists to report on.
 - Export filtered results to Excel/PDF.
 - Saved report filters for management.
 
 ### 8.17 Audit Logs
 
-- Record login, create, edit, status change, upload, archive, financial action and permission changes.
+- Record login, create, edit, status change, upload, archive and permission changes.
 - Store user, timestamp, entity, record ID, action, before/after values and IP/device where legally appropriate.
 - Audit records should be immutable to ordinary users.
 
@@ -274,8 +300,8 @@ Recommended relational database: PostgreSQL or MySQL. Use UUID or BIGINT primary
 | tickets | id, candidate_id, airline, pnr, ticket_no, flight_no, departure_datetime, origin, destination, file_id, status |
 | departures | id, candidate_id, departure_date, airport, destination, actual_departure, deployment_status, remarks |
 | tasks | id, task_no, title, candidate_id, demand_id, department_id, assigned_to, priority, due_date, status, created_by, completed_at, remarks |
-| transactions | id, transaction_no, transaction_type, candidate_id, agent_id, company_id, demand_id, amount, currency, payment_method, transaction_date, reference, status, remarks |
-| invoices | id, invoice_no, company_id, demand_id, invoice_date, due_date, amount, currency, status |
+| ~~transactions~~ | **descoped — see 4.2/8.14, not implemented** |
+| ~~invoices~~ | **descoped — see 4.2/8.14, not implemented** |
 | notifications | id, user_id, type, title, message, entity_type, entity_id, read_at, created_at |
 | audit_logs | id, user_id, entity_type, entity_id, action, before_json, after_json, ip_address, user_agent, created_at |
 | file_registry | id, storage_key, original_name, mime_type, size, checksum, uploaded_by, created_at, archived_at |
@@ -287,11 +313,10 @@ Recommended relational database: PostgreSQL or MySQL. Use UUID or BIGINT primary
 - One Demand → Many Positions.
 - One Demand Position → Many Candidates.
 - One Agent → Many Candidates.
-- One Candidate → Many Documents, Status History, Passport Movements, Tasks and Transactions.
+- One Candidate → Many Documents, Status History, Passport Movements and Tasks.
 - One Candidate → Zero/One or Multiple visa/MOFA/medical/police/BMET records depending on workflow and reprocessing.
 - One Interview Event → Many Candidates.
-- One Company → Many Invoices.
-- One Demand → Many Candidate records and financial records.
+- One Demand → Many Candidate records.
 - Every uploaded file must be referenced through file_registry; business tables should not store raw files.
 
 ## 11. Screen-by-Screen Requirements
@@ -301,14 +326,14 @@ Recommended relational database: PostgreSQL or MySQL. Use UUID or BIGINT primary
 | S01 | Login | Email/mobile, password, remember device, forgot password, MFA if enabled. |
 | S02 | Main Dashboard | KPI cards, pipeline, overdue tasks, alerts, company/demand filters, charts, quick actions. |
 | S03 | Candidate List | Search, filters, bulk actions, status, agent, company, demand, assigned employee, export. |
-| S04 | Candidate Profile | Identity, recruitment summary, current status, next action, documents, timeline, passport custody, visa, medical, BMET, finance. |
+| S04 | Candidate Profile | Identity, recruitment summary, current status, next action, documents, timeline, passport custody, visa, medical, BMET. |
 | S05 | Candidate Registration | Basic data, passport, profession, agent/source, company/demand/position, duplicate check. |
 | S06 | Document Center | Required document checklist, upload, preview, verify/reject, expiry, version history. |
 | S07 | Passport Tracker | Current holder/location, movement history, receive/hand-over actions, printable receipt. |
-| S08 | Companies | Company list, search, profile, contacts, documents, demands, candidate pipeline, financial summary. |
+| S08 | Companies | Company list, search, profile, contacts, documents, demands, candidate pipeline. |
 | S09 | Demand List | Demand number, company, country, deadline, required quantity, current pipeline, status. |
 | S10 | Demand Detail | Positions, quotas, candidate pipeline, progress bar, shortage, interview events, reports. |
-| S11 | Agent Management | Agent profile, candidates, performance, commissions/payables, documents. |
+| S11 | Agent Management | Agent profile, candidates, performance, commission terms (display only — no payable tracking, see 4.2), documents. |
 | S12 | Interview/Event | Create event, assign candidates, serials, attendance, results, print sheets. |
 | S13 | Visa/MOFA | Queue of cases, filters, status update, document upload, expiry alerts. |
 | S14 | Medical | Appointment queue, result entry, fit card upload, expiry alerts. |
@@ -316,7 +341,7 @@ Recommended relational database: PostgreSQL or MySQL. Use UUID or BIGINT primary
 | S16 | BMET/Manpower | Clearance queue, submission/completion, rejection reasons, documents. |
 | S17 | Departure | Ready-to-depart checklist, ticket data, departure confirmation, final status. |
 | S18 | Tasks | My tasks, department tasks, overdue, priority, assignment and completion. |
-| S19 | Accounts | Receipts, dues, invoices, agent payable, expenses, transactions and reports. |
+| S19 | ~~Accounts~~ | **Descoped — see 4.2/8.14.** Was: receipts, dues, invoices, agent payable, expenses, transactions and reports. |
 | S20 | Reports | Report catalog, filters, saved views, Excel/PDF export. |
 | S21 | Notifications | Unread alerts, deadlines, document expiry, overdue tasks. |
 | S22 | Users & Roles | Users, departments, roles, permissions, activation/deactivation. |
@@ -340,7 +365,7 @@ The Candidate Profile should be the most important operational screen. Recommend
 - BMET
 - Passport Movement
 - Ticket & Departure
-- Accounts
+- ~~Accounts~~ (descoped, see 4.2/8.14)
 - Tasks
 - Timeline
 - Audit
@@ -431,7 +456,7 @@ END
 - Document expiry must generate configurable alerts, e.g. 30/15/7 days before expiry.
 - Demand progress must be calculated automatically from linked candidates.
 - Departed candidates become read-only for ordinary users except authorized post-deployment updates.
-- Financial transactions must never be hard-deleted; corrections use reversal/adjustment entries.
+- ~~Financial transactions must never be hard-deleted; corrections use reversal/adjustment entries.~~ — moot, Finance & Accounting is descoped (4.2/8.14).
 - Archived records remain searchable by authorized users.
 - Agent users must never see another agent's candidates.
 - Employees may edit only modules permitted by their role and department.
@@ -449,7 +474,7 @@ END
 | Demand below target | Show shortage KPI | Management + Marketing |
 | Passport overdue with custodian | Critical alert | Custodian + Operations Manager |
 | Candidate marked Ready | Run prerequisite validation | Operations/Management |
-| Departure completed | Close recruitment pipeline | Management + Accounts |
+| Departure completed | Close recruitment pipeline | Management (~~+ Accounts~~ — descoped, 4.2/8.14) |
 
 ## 17. Reporting Requirements
 
@@ -468,10 +493,10 @@ END
 - Passport Custody Report
 - Overdue Task Report
 - Employee Performance Report
-- Candidate Collection Report
-- Agent Payable Report
-- Client Receivable Report
-- Monthly Management Report
+- ~~Candidate Collection Report~~ — descoped, financial (4.2/8.14)
+- ~~Agent Payable Report~~ — descoped, financial (4.2/8.14)
+- ~~Client Receivable Report~~ — descoped, financial (4.2/8.14)
+- Monthly Management Report (operational content only — no financial section, per 4.2/8.14)
 
 ## 18. Non-Functional Requirements
 
@@ -526,7 +551,7 @@ END
 |---|---|
 | Phase 1 – Foundation | Login/RBAC, dashboard, companies, agents, demands, candidates, search, documents, candidate timeline. |
 | Phase 2 – Recruitment Operations | Interview, contract, visa, MOFA/Embassy, medical, police clearance, BMET, passport tracking. |
-| Phase 3 – Completion & Management | Ticket/departure, accounts, tasks, notifications, reports, employee performance, audit. |
+| Phase 3 – Completion & Management | Ticket/departure, tasks, notifications, reports, employee performance, audit. (Accounts descoped — see 4.2/8.14.) |
 | Phase 4 – Automation | WhatsApp/SMS/email, advanced analytics, client/agent portals, mobile app, integrations. |
 
 ## 23. Acceptance Criteria
@@ -576,4 +601,4 @@ END
 
 The system must not become another digital version of scattered spreadsheets. It must operate as a controlled workflow engine. Each record must have an owner, each pending action must have a next step, each important change must be auditable, and management must have real-time visibility from demand creation to final departure.
 
-Recommended core identifiers: Company ID → Demand ID → Position ID → Candidate ID. All operational, document, workflow and financial records should connect to these identifiers.
+Recommended core identifiers: Company ID → Demand ID → Position ID → Candidate ID. All operational, document and workflow records should connect to these identifiers.

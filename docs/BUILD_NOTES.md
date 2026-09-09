@@ -65,11 +65,14 @@ is flagged.
 
 ### 6. Company dashboard aggregation not built
 - **Spec**: SRS 8.2 — "Company dashboard showing demands, candidate
-  pipeline, departures and financial status."
-- **Current state**: not built. Depends on Demand + Candidate (both now
-  exist) and Transaction/Invoice (not yet built).
-- **To close**: belongs in the Reports/Dashboard build-order step, once
-  Accounts (Transaction/Invoice) exists for the financial-status part.
+  pipeline and departures." (Originally also listed "financial status";
+  Finance & Accounting is now permanently descoped — see SRS 4.2/8.14 —
+  so that part of the requirement is gone, not just unbuilt.)
+- **Current state**: not built. Depends on Demand + Candidate, both of
+  which now exist.
+- **To close**: belongs in the Reports/Dashboard build-order step, purely
+  operational aggregation now (demand/candidate/departure counts) — no
+  financial data to include.
 
 ### 7. Mobile number validation is minimal
 - **Spec**: SRS 21 — "Validate mobile numbers by configured country
@@ -237,3 +240,25 @@ is flagged.
   an unconditional 400 with no override path, which didn't match SRS 15's
   "mandatory prerequisite" framing. See the Ticket/Departure module
   commit.
+- **Finance & Accounting (SRS section 8.14) permanently descoped** — per
+  explicit user decision: no Transaction/Invoice module, no financial
+  reporting anywhere in the system, ever. Not deferred to a later phase —
+  removed as a requirement entirely. `docs/SRS.md` sections 2, 3, 4.1/4.2,
+  6, 7, 8.14, 8.16, 8.17, 9, 10, 11, 12, 15, 16, 17, 22 and 26 are updated
+  to mark every Finance-dependent requirement as descoped (struck through
+  with a pointer back to 4.2/8.14) rather than silently deleted, so the
+  original requirement text stays visible for reference.
+
+  **Accounts role is now unused.** `ACCOUNTS` remains in the Prisma
+  `Role` enum and still carries its existing Edit rights on
+  Candidates/Documents (SRS section 7's matrix column — unrelated to
+  Finance & Accounting, already implemented, left untouched), but it has
+  no functional module of its own left to grant access to: there is no
+  Transaction, Invoice, or Accounts route/controller/service anywhere in
+  the codebase (confirmed — none was ever built), and none will be. The
+  role is effectively inert for its originally-intended purpose. Per
+  explicit instruction, no code change was made to the `Role` enum or to
+  any `MUTATE_ROLES`/`READ_ROLES` array that includes `Role.ACCOUNTS` —
+  whether to strip `ACCOUNTS` from the enum entirely (a breaking change
+  for any already-seeded/registered Accounts users) or leave it inert is
+  a decision explicitly deferred by the user to a later date.
