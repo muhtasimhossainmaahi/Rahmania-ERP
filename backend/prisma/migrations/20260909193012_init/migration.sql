@@ -8,6 +8,12 @@ CREATE TYPE "DemandStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED', 'CANCELLED'
 CREATE TYPE "CandidateStatus" AS ENUM ('SOURCED', 'REGISTERED', 'DOCUMENT_VERIFICATION', 'CV_READY', 'SHORTLISTED', 'INTERVIEW', 'SELECTED', 'CONTRACT', 'VISA_PROCESSING', 'VISA_RECEIVED', 'MOFA_EMBASSY', 'MEDICAL', 'POLICE_CLEARANCE', 'BMET_MANPOWER', 'TICKETING', 'READY_TO_DEPART', 'DEPARTED', 'ON_HOLD', 'REJECTED', 'CANCELLED', 'VISA_REJECTED', 'MEDICAL_UNFIT', 'PASSPORT_ISSUE', 'DOCUMENT_REJECTED', 'BMET_REJECTED', 'WITHDRAWN');
 
 -- CreateEnum
+CREATE TYPE "InterviewResult" AS ENUM ('SELECTED', 'REJECTED', 'HOLD', 'SECOND_INTERVIEW', 'NO_SHOW');
+
+-- CreateEnum
+CREATE TYPE "InterviewAttendance" AS ENUM ('PRESENT', 'ABSENT');
+
+-- CreateEnum
 CREATE TYPE "CandidateDocumentStatus" AS ENUM ('PENDING', 'VERIFIED', 'REJECTED', 'ARCHIVED');
 
 -- CreateTable
@@ -202,6 +208,37 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "interview_events" (
+    "id" TEXT NOT NULL,
+    "event_code" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "demand_id" TEXT NOT NULL,
+    "event_date" TIMESTAMP(3) NOT NULL,
+    "venue" TEXT,
+    "start_time" TIMESTAMP(3),
+    "end_time" TIMESTAMP(3),
+    "interviewer" TEXT,
+    "capacity" INTEGER,
+    "status" TEXT NOT NULL DEFAULT 'SCHEDULED',
+
+    CONSTRAINT "interview_events_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "interview_candidates" (
+    "id" TEXT NOT NULL,
+    "event_id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "serial_no" INTEGER NOT NULL,
+    "attendance" "InterviewAttendance",
+    "result" "InterviewResult",
+    "score" DECIMAL(65,30),
+    "remarks" TEXT,
+
+    CONSTRAINT "interview_candidates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "passport_movements" (
     "id" TEXT NOT NULL,
     "candidate_id" TEXT NOT NULL,
@@ -305,6 +342,18 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "interview_events_event_code_key" ON "interview_events"("event_code");
+
+-- CreateIndex
+CREATE INDEX "interview_candidates_event_id_idx" ON "interview_candidates"("event_id");
+
+-- CreateIndex
+CREATE INDEX "interview_candidates_candidate_id_idx" ON "interview_candidates"("candidate_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "interview_candidates_event_id_candidate_id_key" ON "interview_candidates"("event_id", "candidate_id");
+
+-- CreateIndex
 CREATE INDEX "passport_movements_candidate_id_idx" ON "passport_movements"("candidate_id");
 
 -- CreateIndex
@@ -360,6 +409,18 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "interview_events" ADD CONSTRAINT "interview_events_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "interview_events" ADD CONSTRAINT "interview_events_demand_id_fkey" FOREIGN KEY ("demand_id") REFERENCES "demands"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "interview_candidates" ADD CONSTRAINT "interview_candidates_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "interview_events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "interview_candidates" ADD CONSTRAINT "interview_candidates_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "passport_movements" ADD CONSTRAINT "passport_movements_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

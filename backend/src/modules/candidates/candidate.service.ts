@@ -14,7 +14,10 @@ export interface Actor {
   role: Role;
 }
 
-async function getOwnAgentId(userId: string): Promise<string | null> {
+// Exported for reuse by modules that need an Agent actor's own scope but
+// aren't gated by a single candidate's ownership (e.g. InterviewEvent,
+// which has many candidates from potentially many agents).
+export async function getOwnAgentId(userId: string): Promise<string | null> {
   const agent = await prisma.agent.findUnique({ where: { userId } });
   return agent?.id ?? null;
 }

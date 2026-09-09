@@ -42,10 +42,10 @@ model User {
   auditLogs  AuditLog[]
   agent      Agent?
 
-  assignedCandidates      Candidate[]              @relation("AssignedEmployee")
-  statusChanges           CandidateStatusHistory[] @relation("StatusChangedBy")
-  passportMovementsFrom   PassportMovement[]       @relation("PassportMovementFrom")
-  passportMovementsTo     PassportMovement[]       @relation("PassportMovementTo")
+  assignedCandidates    Candidate[]              @relation("AssignedEmployee")
+  statusChanges         CandidateStatusHistory[] @relation("StatusChangedBy")
+  passportMovementsFrom PassportMovement[]       @relation("PassportMovementFrom")
+  passportMovementsTo   PassportMovement[]       @relation("PassportMovementTo")
 
   @@map("users")
 }
@@ -128,10 +128,10 @@ model FileRegistry {
   createdAt    DateTime  @default(now()) @map("created_at")
   archivedAt   DateTime? @map("archived_at")
 
-  companies              Company[]
-  agents                 Agent[]
-  candidateDocuments     CandidateDocument[]
-  passportMovements      PassportMovement[]
+  companies          Company[]
+  agents             Agent[]
+  candidateDocuments CandidateDocument[]
+  passportMovements  PassportMovement[]
 
   @@map("file_registry")
 }
@@ -149,30 +149,31 @@ model Company {
   agreementFileId String? @map("agreement_file_id")
   isActive        Boolean @default(true) @map("status")
 
-  country       Country       @relation(fields: [countryId], references: [id])
-  agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
-  demands       Demand[]
+  country         Country          @relation(fields: [countryId], references: [id])
+  agreementFile   FileRegistry?    @relation(fields: [agreementFileId], references: [id])
+  demands         Demand[]
+  interviewEvents InterviewEvent[]
 
   @@index([name])
   @@map("companies")
 }
 
 model Agent {
-  id               String  @id @default(uuid())
-  agentCode        String  @unique @map("agent_code")
-  name             String
-  organization     String?
-  contactPerson    String? @map("contact_person")
-  mobile           String?
-  email            String?
-  address          String?
-  commissionTerms  String? @map("commission_terms")
-  agreementFileId  String? @map("agreement_file_id")
+  id              String  @id @default(uuid())
+  agentCode       String  @unique @map("agent_code")
+  name            String
+  organization    String?
+  contactPerson   String? @map("contact_person")
+  mobile          String?
+  email           String?
+  address         String?
+  commissionTerms String? @map("commission_terms")
+  agreementFileId String? @map("agreement_file_id")
   // Links an Agent-role login to their own Agent record, so a future
   // Candidate query can scope "own submitted candidates" per SRS 15
   // ("Agent users must never see another agent's candidates").
-  userId           String? @unique @map("user_id")
-  isActive         Boolean @default(true) @map("status")
+  userId          String? @unique @map("user_id")
+  isActive        Boolean @default(true) @map("status")
 
   agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
   user          User?         @relation(fields: [userId], references: [id])
@@ -200,10 +201,11 @@ model Demand {
   status       DemandStatus @default(OPEN)
   notes        String?
 
-  company    Company          @relation(fields: [companyId], references: [id])
-  country    Country          @relation(fields: [countryId], references: [id])
-  positions  DemandPosition[]
-  candidates Candidate[]
+  company         Company          @relation(fields: [companyId], references: [id])
+  country         Country          @relation(fields: [countryId], references: [id])
+  positions       DemandPosition[]
+  candidates      Candidate[]
+  interviewEvents InterviewEvent[]
 
   @@map("demands")
 }
@@ -282,19 +284,72 @@ model Candidate {
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
-  agent            Agent?                   @relation(fields: [agentId], references: [id])
-  demand           Demand?                  @relation(fields: [demandId], references: [id])
-  position         DemandPosition?          @relation(fields: [positionId], references: [id])
-  assignedEmployee User?                    @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  agent             Agent?                   @relation(fields: [agentId], references: [id])
+  demand            Demand?                  @relation(fields: [demandId], references: [id])
+  position          DemandPosition?          @relation(fields: [positionId], references: [id])
+  assignedEmployee  User?                    @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
   statusHistory     CandidateStatusHistory[]
   documents         CandidateDocument[]
   passportMovements PassportMovement[]
+  interviews        InterviewCandidate[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+enum InterviewResult {
+  SELECTED
+  REJECTED
+  HOLD
+  SECOND_INTERVIEW
+  NO_SHOW
+}
+
+enum InterviewAttendance {
+  PRESENT
+  ABSENT
+}
+
+model InterviewEvent {
+  id          String    @id @default(uuid())
+  eventCode   String    @unique @map("event_code")
+  companyId   String    @map("company_id")
+  demandId    String    @map("demand_id")
+  eventDate   DateTime  @map("event_date")
+  venue       String?
+  startTime   DateTime? @map("start_time")
+  endTime     DateTime? @map("end_time")
+  interviewer String?
+  capacity    Int?
+  status      String    @default("SCHEDULED")
+
+  company    Company              @relation(fields: [companyId], references: [id])
+  demand     Demand               @relation(fields: [demandId], references: [id])
+  candidates InterviewCandidate[]
+
+  @@map("interview_events")
+}
+
+model InterviewCandidate {
+  id          String               @id @default(uuid())
+  eventId     String               @map("event_id")
+  candidateId String               @map("candidate_id")
+  serialNo    Int                  @map("serial_no")
+  attendance  InterviewAttendance?
+  result      InterviewResult?
+  score       Decimal?
+  remarks     String?
+
+  event     InterviewEvent @relation(fields: [eventId], references: [id])
+  candidate Candidate      @relation(fields: [candidateId], references: [id])
+
+  @@unique([eventId, candidateId])
+  @@index([eventId])
+  @@index([candidateId])
+  @@map("interview_candidates")
 }
 
 model PassportMovement {

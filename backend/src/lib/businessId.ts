@@ -23,3 +23,13 @@ export async function generateCandidateCode(): Promise<string> {
   const seq = await nextSequenceNumber("candidate_seq");
   return `RC-CAN-${String(seq).padStart(6, "0")}`;
 }
+
+// SRS gives no explicit format for interview event codes (unlike Demand's
+// and Candidate's own examples); reusing the Demand-style
+// PREFIX-YEAR-NNNN shape for consistency since events are similarly
+// date-bound operational records.
+export async function generateInterviewEventCode(): Promise<string> {
+  const year = new Date().getFullYear();
+  const seq = await nextSequenceNumber(`interview_event_seq_${year}`);
+  return `INT-${year}-${String(seq).padStart(4, "0")}`;
+}
