@@ -127,6 +127,18 @@ is flagged.
   module-level role gating. Flagging the interpretation rather than
   silently assuming it's out of scope.
 
+### 11. Printable passport receipt / hand-over acknowledgement PDF
+- **Spec**: SRS 8.7 — "Generate printable passport receipt/hand-over
+  acknowledgement."
+- **Current state**: the PassportMovement module has the underlying data
+  (from/to, purpose, timestamps, an `acknowledgementFileId` slot for a
+  scanned signed copy) but nothing generates an actual printable
+  PDF/receipt document from it.
+- **To close**: belongs with the Reports & Exports build-order step
+  (SRS 8.16/S20 — Excel/PDF export), which is where the rest of the
+  app's PDF-generation capability will land. Not a data-model gap, just
+  a presentation layer not built yet.
+
 ## Resolved
 
 - **Duplicate-passport warn-or-block toggle** (SRS 21) — implemented via
