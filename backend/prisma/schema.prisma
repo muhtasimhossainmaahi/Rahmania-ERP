@@ -139,6 +139,7 @@ model FileRegistry {
   medicalRecords     MedicalRecord[]
   policeClearances   PoliceClearance[]
   bmetRecords        BmetRecord[]
+  tickets            Ticket[]
 
   @@map("file_registry")
 }
@@ -306,12 +307,48 @@ model Candidate {
   medicalRecords    MedicalRecord[]
   policeClearances  PoliceClearance[]
   bmetRecords       BmetRecord[]
+  ticket            Ticket?
+  departure         Departure?
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+model Ticket {
+  id                String    @id @default(uuid())
+  candidateId       String    @unique @map("candidate_id")
+  airline           String?
+  pnr               String?
+  ticketNo          String?   @map("ticket_no")
+  flightNo          String?   @map("flight_no")
+  departureDatetime DateTime? @map("departure_datetime")
+  origin            String?
+  destination       String?
+  fileId            String?   @map("file_id")
+  status            String    @default("PENDING")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@map("tickets")
+}
+
+model Departure {
+  id               String    @id @default(uuid())
+  candidateId      String    @unique @map("candidate_id")
+  departureDate    DateTime? @map("departure_date")
+  airport          String?
+  destination      String?
+  actualDeparture  DateTime? @map("actual_departure")
+  deploymentStatus String?   @map("deployment_status")
+  remarks          String?
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+
+  @@map("departures")
 }
 
 model BmetRecord {

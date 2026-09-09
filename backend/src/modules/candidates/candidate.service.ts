@@ -7,6 +7,7 @@ import { normalizePassport } from "../../lib/passport";
 import { getDuplicatePassportMode } from "../../lib/settings";
 import { HttpError } from "../../middleware/errorHandler";
 import { CreateCandidateInput, UpdateCandidateInput } from "./candidate.schema";
+import { checkMandatoryPrerequisites } from "./candidatePrerequisites";
 import { isStandardTransition } from "./candidateStatus";
 
 export interface Actor {
@@ -263,27 +264,29 @@ export async function changeCandidateStatus(
   }
 
   const standard = isStandardTransition(candidate.currentStatus, targetStatus);
+  const prerequisites = await checkMandatoryPrerequisites(targetStatus, candidate);
 
-  if (!standard) {
+  // SRS 15: a non-standard workflow transition AND a status with unmet
+  // mandatory prerequisites (Selected without a Demand Position, Ready to
+  // Depart without every mandatory prerequisite) both require the same
+  // override mechanism: "Any override of a mandatory prerequisite requires
+  // authorized management permission and a mandatory reason."
+  const needsOverride = !standard || !prerequisites.satisfied;
+
+  if (needsOverride) {
     const overrideAuthorized = actor.role === Role.SUPER_ADMIN || actor.role === Role.MANAGEMENT;
     if (!overrideAuthorized) {
-      throw new HttpError(
-        403,
-        `Transition from ${candidate.currentStatus} to ${targetStatus} is not permitted for your role`,
-      );
+      const reason = !standard
+        ? `Transition from ${candidate.currentStatus} to ${targetStatus} is not permitted for your role`
+        : `Missing mandatory prerequisites for ${targetStatus}: ${prerequisites.missing.join(", ")}`;
+      throw new HttpError(403, reason);
     }
     if (!remarks) {
-      throw new HttpError(400, "A reason is required to override the standard workflow transition");
+      const reason = !standard
+        ? "A reason is required to override the standard workflow transition"
+        : `A reason is required to override missing mandatory prerequisites: ${prerequisites.missing.join(", ")}`;
+      throw new HttpError(400, reason);
     }
-  }
-
-  // SRS 15: "Candidate cannot be marked Selected unless linked to a valid
-  // Demand Position."
-  if (targetStatus === CandidateStatus.SELECTED && !candidate.positionId) {
-    throw new HttpError(
-      400,
-      "Candidate must be linked to a valid Demand Position before being marked Selected",
-    );
   }
 
   const updated = await prisma.candidate.update({
@@ -303,11 +306,17 @@ export async function changeCandidateStatus(
 
   await writeAuditLog({
     ...context,
-    action: "CANDIDATE_STATUS_CHANGED",
+    action: prerequisites.satisfied ? "CANDIDATE_STATUS_CHANGED" : "CANDIDATE_STATUS_CHANGED_PREREQUISITE_OVERRIDE",
     entityType: "Candidate",
     entityId: id,
     before: { currentStatus: candidate.currentStatus },
-    after: { currentStatus: targetStatus },
+    after: prerequisites.satisfied
+      ? { currentStatus: targetStatus }
+      : {
+          currentStatus: targetStatus,
+          overriddenPrerequisites: prerequisites.missing,
+          overrideReason: remarks,
+        },
   });
 
   return updated;

@@ -214,6 +214,37 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "tickets" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "airline" TEXT,
+    "pnr" TEXT,
+    "ticket_no" TEXT,
+    "flight_no" TEXT,
+    "departure_datetime" TIMESTAMP(3),
+    "origin" TEXT,
+    "destination" TEXT,
+    "file_id" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+
+    CONSTRAINT "tickets_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "departures" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "departure_date" TIMESTAMP(3),
+    "airport" TEXT,
+    "destination" TEXT,
+    "actual_departure" TIMESTAMP(3),
+    "deployment_status" TEXT,
+    "remarks" TEXT,
+
+    CONSTRAINT "departures_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "bmet_records" (
     "id" TEXT NOT NULL,
     "candidate_id" TEXT NOT NULL,
@@ -469,6 +500,12 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "tickets_candidate_id_key" ON "tickets"("candidate_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "departures_candidate_id_key" ON "departures"("candidate_id");
+
+-- CreateIndex
 CREATE INDEX "bmet_records_candidate_id_idx" ON "bmet_records"("candidate_id");
 
 -- CreateIndex
@@ -560,6 +597,15 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tickets" ADD CONSTRAINT "tickets_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tickets" ADD CONSTRAINT "tickets_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "departures" ADD CONSTRAINT "departures_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "bmet_records" ADD CONSTRAINT "bmet_records_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
