@@ -42,6 +42,9 @@ model User {
   auditLogs  AuditLog[]
   agent      Agent?
 
+  assignedCandidates Candidate[]              @relation("AssignedEmployee")
+  statusChanges      CandidateStatusHistory[] @relation("StatusChangedBy")
+
   @@map("users")
 }
 
@@ -168,6 +171,7 @@ model Agent {
 
   agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
   user          User?         @relation(fields: [userId], references: [id])
+  candidates    Candidate[]
 
   @@index([name])
   @@map("agents")
@@ -191,9 +195,10 @@ model Demand {
   status       DemandStatus @default(OPEN)
   notes        String?
 
-  company   Company          @relation(fields: [companyId], references: [id])
-  country   Country          @relation(fields: [countryId], references: [id])
-  positions DemandPosition[]
+  company    Company          @relation(fields: [companyId], references: [id])
+  country    Country          @relation(fields: [countryId], references: [id])
+  positions  DemandPosition[]
+  candidates Candidate[]
 
   @@map("demands")
 }
@@ -211,7 +216,92 @@ model DemandPosition {
   benefits      String?
   isActive      Boolean  @default(true) @map("status")
 
-  demand Demand @relation(fields: [demandId], references: [id])
+  demand     Demand      @relation(fields: [demandId], references: [id])
+  candidates Candidate[]
 
   @@map("demand_positions")
+}
+
+enum CandidateStatus {
+  SOURCED
+  REGISTERED
+  DOCUMENT_VERIFICATION
+  CV_READY
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  CONTRACT
+  VISA_PROCESSING
+  VISA_RECEIVED
+  MOFA_EMBASSY
+  MEDICAL
+  POLICE_CLEARANCE
+  BMET_MANPOWER
+  TICKETING
+  READY_TO_DEPART
+  DEPARTED
+  ON_HOLD
+  REJECTED
+  CANCELLED
+  VISA_REJECTED
+  MEDICAL_UNFIT
+  PASSPORT_ISSUE
+  DOCUMENT_REJECTED
+  BMET_REJECTED
+  WITHDRAWN
+}
+
+model Candidate {
+  id                 String          @id @default(uuid())
+  candidateCode      String          @unique @map("candidate_code")
+  fullName           String          @map("full_name")
+  fatherName         String?         @map("father_name")
+  dob                DateTime?
+  gender             String?
+  maritalStatus      String?         @map("marital_status")
+  mobile             String?
+  altMobile          String?         @map("alt_mobile")
+  address            String?
+  passportNo         String          @map("passport_no")
+  passportIssue      DateTime?       @map("passport_issue")
+  passportExpiry     DateTime?       @map("passport_expiry")
+  profession         String?
+  experienceYears    Int?            @map("experience_years")
+  education          String?
+  source             String?
+  agentId            String?         @map("agent_id")
+  demandId           String?         @map("demand_id")
+  positionId         String?         @map("position_id")
+  assignedEmployeeId String?         @map("assigned_employee_id")
+  currentStatus      CandidateStatus @default(REGISTERED) @map("current_status")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  agent            Agent?                   @relation(fields: [agentId], references: [id])
+  demand           Demand?                  @relation(fields: [demandId], references: [id])
+  position         DemandPosition?          @relation(fields: [positionId], references: [id])
+  assignedEmployee User?                    @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  statusHistory    CandidateStatusHistory[]
+
+  @@index([passportNo])
+  @@index([currentStatus])
+  @@index([agentId])
+  @@index([demandId])
+  @@map("candidates")
+}
+
+model CandidateStatusHistory {
+  id          String           @id @default(uuid())
+  candidateId String           @map("candidate_id")
+  oldStatus   CandidateStatus? @map("old_status")
+  newStatus   CandidateStatus  @map("new_status")
+  changedBy   String           @map("changed_by")
+  changedAt   DateTime         @default(now()) @map("changed_at")
+  remarks     String?
+
+  candidate     Candidate @relation(fields: [candidateId], references: [id])
+  changedByUser User      @relation("StatusChangedBy", fields: [changedBy], references: [id])
+
+  @@index([candidateId])
+  @@map("candidate_status_history")
 }

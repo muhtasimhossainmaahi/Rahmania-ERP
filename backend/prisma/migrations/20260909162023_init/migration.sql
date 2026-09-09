@@ -4,6 +4,9 @@ CREATE TYPE "Role" AS ENUM ('SUPER_ADMIN', 'MANAGEMENT', 'OPERATIONS', 'MARKETIN
 -- CreateEnum
 CREATE TYPE "DemandStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED', 'CANCELLED');
 
+-- CreateEnum
+CREATE TYPE "CandidateStatus" AS ENUM ('SOURCED', 'REGISTERED', 'DOCUMENT_VERIFICATION', 'CV_READY', 'SHORTLISTED', 'INTERVIEW', 'SELECTED', 'CONTRACT', 'VISA_PROCESSING', 'VISA_RECEIVED', 'MOFA_EMBASSY', 'MEDICAL', 'POLICE_CLEARANCE', 'BMET_MANPOWER', 'TICKETING', 'READY_TO_DEPART', 'DEPARTED', 'ON_HOLD', 'REJECTED', 'CANCELLED', 'VISA_REJECTED', 'MEDICAL_UNFIT', 'PASSPORT_ISSUE', 'DOCUMENT_REJECTED', 'BMET_REJECTED', 'WITHDRAWN');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -165,6 +168,49 @@ CREATE TABLE "demand_positions" (
     CONSTRAINT "demand_positions_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "candidates" (
+    "id" TEXT NOT NULL,
+    "candidate_code" TEXT NOT NULL,
+    "full_name" TEXT NOT NULL,
+    "father_name" TEXT,
+    "dob" TIMESTAMP(3),
+    "gender" TEXT,
+    "marital_status" TEXT,
+    "mobile" TEXT,
+    "alt_mobile" TEXT,
+    "address" TEXT,
+    "passport_no" TEXT NOT NULL,
+    "passport_issue" TIMESTAMP(3),
+    "passport_expiry" TIMESTAMP(3),
+    "profession" TEXT,
+    "experience_years" INTEGER,
+    "education" TEXT,
+    "source" TEXT,
+    "agent_id" TEXT,
+    "demand_id" TEXT,
+    "position_id" TEXT,
+    "assigned_employee_id" TEXT,
+    "current_status" "CandidateStatus" NOT NULL DEFAULT 'REGISTERED',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "candidates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "candidate_status_history" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "old_status" "CandidateStatus",
+    "new_status" "CandidateStatus" NOT NULL,
+    "changed_by" TEXT NOT NULL,
+    "changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "remarks" TEXT,
+
+    CONSTRAINT "candidate_status_history_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_employee_code_key" ON "users"("employee_code");
 
@@ -204,6 +250,24 @@ CREATE INDEX "agents_name_idx" ON "agents"("name");
 -- CreateIndex
 CREATE UNIQUE INDEX "demands_demand_no_key" ON "demands"("demand_no");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "candidates_candidate_code_key" ON "candidates"("candidate_code");
+
+-- CreateIndex
+CREATE INDEX "candidates_passport_no_idx" ON "candidates"("passport_no");
+
+-- CreateIndex
+CREATE INDEX "candidates_current_status_idx" ON "candidates"("current_status");
+
+-- CreateIndex
+CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
+
+-- CreateIndex
+CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
+
+-- CreateIndex
+CREATE INDEX "candidate_status_history_candidate_id_idx" ON "candidate_status_history"("candidate_id");
+
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -236,3 +300,21 @@ ALTER TABLE "demands" ADD CONSTRAINT "demands_country_id_fkey" FOREIGN KEY ("cou
 
 -- AddForeignKey
 ALTER TABLE "demand_positions" ADD CONSTRAINT "demand_positions_demand_id_fkey" FOREIGN KEY ("demand_id") REFERENCES "demands"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidates" ADD CONSTRAINT "candidates_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidates" ADD CONSTRAINT "candidates_demand_id_fkey" FOREIGN KEY ("demand_id") REFERENCES "demands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KEY ("position_id") REFERENCES "demand_positions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidate_status_history" ADD CONSTRAINT "candidate_status_history_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candidate_status_history" ADD CONSTRAINT "candidate_status_history_changed_by_fkey" FOREIGN KEY ("changed_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -18,3 +18,8 @@ export async function generateDemandNo(): Promise<string> {
   const seq = await nextSequenceNumber(`demand_seq_${year}`);
   return `DEM-${year}-${String(seq).padStart(4, "0")}`;
 }
+
+export async function generateCandidateCode(): Promise<string> {
+  const seq = await nextSequenceNumber("candidate_seq");
+  return `RC-CAN-${String(seq).padStart(6, "0")}`;
+}

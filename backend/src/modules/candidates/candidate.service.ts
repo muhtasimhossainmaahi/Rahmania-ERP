@@ -1,0 +1,279 @@
+import { CandidateStatus, Role } from "@prisma/client";
+import { prisma } from "../../config/db";
+import { AuditContext, writeAuditLog } from "../../lib/auditLog";
+import { generateCandidateCode } from "../../lib/businessId";
+import { PaginationParams } from "../../lib/pagination";
+import { normalizePassport } from "../../lib/passport";
+import { HttpError } from "../../middleware/errorHandler";
+import { CreateCandidateInput, UpdateCandidateInput } from "./candidate.schema";
+import { isStandardTransition } from "./candidateStatus";
+
+export interface Actor {
+  id: string;
+  role: Role;
+}
+
+async function getOwnAgentId(userId: string): Promise<string | null> {
+  const agent = await prisma.agent.findUnique({ where: { userId } });
+  return agent?.id ?? null;
+}
+
+async function scopeForActor(actor: Actor) {
+  if (actor.role !== Role.AGENT) {
+    return {};
+  }
+  const agentId = await getOwnAgentId(actor.id);
+  if (!agentId) {
+    throw new HttpError(403, "No agent profile linked to this account");
+  }
+  return { agentId };
+}
+
+interface ListFilters {
+  search?: string;
+  agentId?: string;
+  demandId?: string;
+  status?: CandidateStatus;
+}
+
+export async function listCandidates(
+  pagination: PaginationParams,
+  actor: Actor,
+  filters: ListFilters,
+) {
+  const scope = await scopeForActor(actor);
+
+  const where: Record<string, unknown> = { ...scope };
+  if (filters.agentId && actor.role !== Role.AGENT) {
+    where.agentId = filters.agentId;
+  }
+  if (filters.demandId) {
+    where.demandId = filters.demandId;
+  }
+  if (filters.status) {
+    where.currentStatus = filters.status;
+  }
+  if (filters.search) {
+    const search = filters.search;
+    where.OR = [
+      { fullName: { contains: search, mode: "insensitive" as const } },
+      { candidateCode: { contains: search, mode: "insensitive" as const } },
+      { passportNo: { contains: normalizePassport(search), mode: "insensitive" as const } },
+      { mobile: { contains: search, mode: "insensitive" as const } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    prisma.candidate.findMany({
+      where,
+      skip: (pagination.page - 1) * pagination.pageSize,
+      take: pagination.pageSize,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.candidate.count({ where }),
+  ]);
+
+  return { data, total };
+}
+
+export async function getCandidate(id: string, actor: Actor) {
+  const candidate = await prisma.candidate.findUnique({
+    where: { id },
+    include: { statusHistory: { orderBy: { changedAt: "desc" } } },
+  });
+  if (!candidate) {
+    throw new HttpError(404, "Candidate not found");
+  }
+  if (actor.role === Role.AGENT) {
+    const agentId = await getOwnAgentId(actor.id);
+    if (!agentId || candidate.agentId !== agentId) {
+      throw new HttpError(403, "Not permitted to view this candidate");
+    }
+  }
+  return candidate;
+}
+
+async function assertReferencesValid(input: {
+  agentId?: string;
+  demandId?: string;
+  positionId?: string;
+  assignedEmployeeId?: string;
+}) {
+  if (input.agentId) {
+    const agent = await prisma.agent.findUnique({ where: { id: input.agentId } });
+    if (!agent) {
+      throw new HttpError(400, "Agent not found");
+    }
+  }
+  if (input.demandId) {
+    const demand = await prisma.demand.findUnique({ where: { id: input.demandId } });
+    if (!demand) {
+      throw new HttpError(400, "Demand not found");
+    }
+  }
+  if (input.positionId) {
+    const position = await prisma.demandPosition.findUnique({ where: { id: input.positionId } });
+    if (!position) {
+      throw new HttpError(400, "Demand position not found");
+    }
+    if (input.demandId && position.demandId !== input.demandId) {
+      throw new HttpError(400, "Position does not belong to the given demand");
+    }
+  }
+  if (input.assignedEmployeeId) {
+    const user = await prisma.user.findUnique({ where: { id: input.assignedEmployeeId } });
+    if (!user) {
+      throw new HttpError(400, "Assigned employee not found");
+    }
+  }
+}
+
+// SRS 21 calls for duplicate passport detection to be a warning-or-block
+// admin toggle; there's no Setting-driven config wired up yet, so this
+// hard-blocks by default (the safer of the two) until that toggle exists.
+async function assertPassportNotDuplicate(passportNo: string, excludeId?: string) {
+  const existing = await prisma.candidate.findFirst({ where: { passportNo } });
+  if (existing && existing.id !== excludeId) {
+    throw new HttpError(
+      409,
+      `Passport number already registered to candidate ${existing.candidateCode}`,
+    );
+  }
+}
+
+export async function createCandidate(input: CreateCandidateInput, context: AuditContext) {
+  const passportNo = normalizePassport(input.passportNo);
+  await assertPassportNotDuplicate(passportNo);
+  await assertReferencesValid(input);
+
+  const candidateCode = await generateCandidateCode();
+  const initialStatus = input.currentStatus ?? CandidateStatus.REGISTERED;
+
+  const candidate = await prisma.candidate.create({
+    data: {
+      ...input,
+      passportNo,
+      candidateCode,
+      currentStatus: initialStatus,
+    },
+  });
+
+  await prisma.candidateStatusHistory.create({
+    data: {
+      candidateId: candidate.id,
+      oldStatus: null,
+      newStatus: candidate.currentStatus,
+      changedBy: context.userId,
+      remarks: "Candidate registered",
+    },
+  });
+
+  await writeAuditLog({
+    ...context,
+    action: "CANDIDATE_CREATED",
+    entityType: "Candidate",
+    entityId: candidate.id,
+    after: candidate,
+  });
+
+  return candidate;
+}
+
+export async function updateCandidate(
+  id: string,
+  input: UpdateCandidateInput,
+  context: AuditContext,
+) {
+  const before = await prisma.candidate.findUnique({ where: { id } });
+  if (!before) {
+    throw new HttpError(404, "Candidate not found");
+  }
+
+  const data = { ...input };
+  if (input.passportNo) {
+    data.passportNo = normalizePassport(input.passportNo);
+    await assertPassportNotDuplicate(data.passportNo, id);
+  }
+  await assertReferencesValid({
+    agentId: input.agentId,
+    demandId: input.demandId,
+    positionId: input.positionId,
+    assignedEmployeeId: input.assignedEmployeeId,
+  });
+
+  const candidate = await prisma.candidate.update({ where: { id }, data });
+
+  await writeAuditLog({
+    ...context,
+    action: "CANDIDATE_UPDATED",
+    entityType: "Candidate",
+    entityId: candidate.id,
+    before,
+    after: candidate,
+  });
+
+  return candidate;
+}
+
+export async function changeCandidateStatus(
+  id: string,
+  targetStatus: CandidateStatus,
+  remarks: string | undefined,
+  actor: Actor,
+  context: AuditContext,
+) {
+  const candidate = await prisma.candidate.findUnique({ where: { id } });
+  if (!candidate) {
+    throw new HttpError(404, "Candidate not found");
+  }
+
+  const standard = isStandardTransition(candidate.currentStatus, targetStatus);
+
+  if (!standard) {
+    const overrideAuthorized = actor.role === Role.SUPER_ADMIN || actor.role === Role.MANAGEMENT;
+    if (!overrideAuthorized) {
+      throw new HttpError(
+        403,
+        `Transition from ${candidate.currentStatus} to ${targetStatus} is not permitted for your role`,
+      );
+    }
+    if (!remarks) {
+      throw new HttpError(400, "A reason is required to override the standard workflow transition");
+    }
+  }
+
+  // SRS 15: "Candidate cannot be marked Selected unless linked to a valid
+  // Demand Position."
+  if (targetStatus === CandidateStatus.SELECTED && !candidate.positionId) {
+    throw new HttpError(
+      400,
+      "Candidate must be linked to a valid Demand Position before being marked Selected",
+    );
+  }
+
+  const updated = await prisma.candidate.update({
+    where: { id },
+    data: { currentStatus: targetStatus },
+  });
+
+  await prisma.candidateStatusHistory.create({
+    data: {
+      candidateId: id,
+      oldStatus: candidate.currentStatus,
+      newStatus: targetStatus,
+      changedBy: context.userId,
+      remarks,
+    },
+  });
+
+  await writeAuditLog({
+    ...context,
+    action: "CANDIDATE_STATUS_CHANGED",
+    entityType: "Candidate",
+    entityId: id,
+    before: { currentStatus: candidate.currentStatus },
+    after: { currentStatus: targetStatus },
+  });
+
+  return updated;
+}
