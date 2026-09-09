@@ -40,6 +40,7 @@ model User {
   manager    User?       @relation("UserManager", fields: [managerId], references: [id])
   reports    User[]      @relation("UserManager")
   auditLogs  AuditLog[]
+  agent      Agent?
 
   @@map("users")
 }
@@ -81,6 +82,7 @@ model Country {
 
   documentTypes DocumentType[]
   companies     Company[]
+  demands       Demand[]
 
   @@map("countries")
 }
@@ -121,6 +123,7 @@ model FileRegistry {
   archivedAt   DateTime? @map("archived_at")
 
   companies Company[]
+  agents    Agent[]
 
   @@map("file_registry")
 }
@@ -140,7 +143,75 @@ model Company {
 
   country       Country       @relation(fields: [countryId], references: [id])
   agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
+  demands       Demand[]
 
   @@index([name])
   @@map("companies")
+}
+
+model Agent {
+  id               String  @id @default(uuid())
+  agentCode        String  @unique @map("agent_code")
+  name             String
+  organization     String?
+  contactPerson    String? @map("contact_person")
+  mobile           String?
+  email            String?
+  address          String?
+  commissionTerms  String? @map("commission_terms")
+  agreementFileId  String? @map("agreement_file_id")
+  // Links an Agent-role login to their own Agent record, so a future
+  // Candidate query can scope "own submitted candidates" per SRS 15
+  // ("Agent users must never see another agent's candidates").
+  userId           String? @unique @map("user_id")
+  isActive         Boolean @default(true) @map("status")
+
+  agreementFile FileRegistry? @relation(fields: [agreementFileId], references: [id])
+  user          User?         @relation(fields: [userId], references: [id])
+
+  @@index([name])
+  @@map("agents")
+}
+
+enum DemandStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  CANCELLED
+}
+
+model Demand {
+  id           String       @id @default(uuid())
+  demandNo     String       @unique @map("demand_no")
+  companyId    String       @map("company_id")
+  countryId    String       @map("country_id")
+  title        String
+  receivedDate DateTime     @map("received_date")
+  deadline     DateTime?
+  status       DemandStatus @default(OPEN)
+  notes        String?
+
+  company   Company          @relation(fields: [companyId], references: [id])
+  country   Country          @relation(fields: [countryId], references: [id])
+  positions DemandPosition[]
+
+  @@map("demands")
+}
+
+model DemandPosition {
+  id            String   @id @default(uuid())
+  demandId      String   @map("demand_id")
+  position      String
+  requiredQty   Int      @map("required_qty")
+  salary        Decimal?
+  currency      String?
+  accommodation String?
+  food          String?
+  workingHours  String?  @map("working_hours")
+  benefits      String?
+  isActive      Boolean  @default(true) @map("status")
+
+  demand Demand @relation(fields: [demandId], references: [id])
+
+  @@map("demand_positions")
 }

@@ -3,9 +3,11 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { errorHandler } from "./middleware/errorHandler";
+import { agentRouter } from "./modules/agents/agent.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { companyRouter } from "./modules/companies/company.routes";
 import { countryRouter } from "./modules/countries/country.routes";
+import { demandRouter } from "./modules/demands/demand.routes";
 import { departmentRouter } from "./modules/departments/department.routes";
 import { fileRouter } from "./modules/files/file.routes";
 
@@ -26,6 +28,8 @@ export function createApp() {
   app.use("/departments", departmentRouter);
   app.use("/files", fileRouter);
   app.use("/companies", companyRouter);
+  app.use("/agents", agentRouter);
+  app.use("/demands", demandRouter);
 
   app.use(errorHandler);
 
