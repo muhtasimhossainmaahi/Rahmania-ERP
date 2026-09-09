@@ -208,6 +208,57 @@ CREATE TABLE "candidates" (
 );
 
 -- CreateTable
+CREATE TABLE "visas" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "visa_no" TEXT,
+    "visa_type" TEXT,
+    "profession" TEXT,
+    "sponsor" TEXT,
+    "issue_date" TIMESTAMP(3),
+    "expiry_date" TIMESTAMP(3),
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "file_id" TEXT,
+    "is_current" BOOLEAN NOT NULL DEFAULT true,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "visas_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "mofa_records" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "mofa_no" TEXT,
+    "submission_date" TIMESTAMP(3),
+    "approval_date" TIMESTAMP(3),
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "file_id" TEXT,
+    "is_current" BOOLEAN NOT NULL DEFAULT true,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "mofa_records_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "embassy_records" (
+    "id" TEXT NOT NULL,
+    "candidate_id" TEXT NOT NULL,
+    "appointment_date" TIMESTAMP(3),
+    "submission_date" TIMESTAMP(3),
+    "collection_date" TIMESTAMP(3),
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "file_id" TEXT,
+    "is_current" BOOLEAN NOT NULL DEFAULT true,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "embassy_records_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "contracts" (
     "id" TEXT NOT NULL,
     "candidate_id" TEXT NOT NULL,
@@ -358,6 +409,15 @@ CREATE INDEX "candidates_agent_id_idx" ON "candidates"("agent_id");
 CREATE INDEX "candidates_demand_id_idx" ON "candidates"("demand_id");
 
 -- CreateIndex
+CREATE INDEX "visas_candidate_id_idx" ON "visas"("candidate_id");
+
+-- CreateIndex
+CREATE INDEX "mofa_records_candidate_id_idx" ON "mofa_records"("candidate_id");
+
+-- CreateIndex
+CREATE INDEX "embassy_records_candidate_id_idx" ON "embassy_records"("candidate_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "contracts_candidate_id_key" ON "contracts"("candidate_id");
 
 -- CreateIndex
@@ -431,6 +491,24 @@ ALTER TABLE "candidates" ADD CONSTRAINT "candidates_position_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "candidates" ADD CONSTRAINT "candidates_assigned_employee_id_fkey" FOREIGN KEY ("assigned_employee_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "visas" ADD CONSTRAINT "visas_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "visas" ADD CONSTRAINT "visas_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mofa_records" ADD CONSTRAINT "mofa_records_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mofa_records" ADD CONSTRAINT "mofa_records_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "embassy_records" ADD CONSTRAINT "embassy_records_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "embassy_records" ADD CONSTRAINT "embassy_records_file_id_fkey" FOREIGN KEY ("file_id") REFERENCES "file_registry"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "contracts" ADD CONSTRAINT "contracts_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

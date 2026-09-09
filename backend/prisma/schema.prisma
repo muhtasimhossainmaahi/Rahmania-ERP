@@ -133,6 +133,9 @@ model FileRegistry {
   candidateDocuments CandidateDocument[]
   passportMovements  PassportMovement[]
   contracts          Contract[]
+  visas              Visa[]
+  mofaRecords        MofaRecord[]
+  embassyRecords     EmbassyRecord[]
 
   @@map("file_registry")
 }
@@ -294,12 +297,75 @@ model Candidate {
   passportMovements PassportMovement[]
   interviews        InterviewCandidate[]
   contract          Contract?
+  visas             Visa[]
+  mofaRecords       MofaRecord[]
+  embassyRecords    EmbassyRecord[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+model Visa {
+  id          String    @id @default(uuid())
+  candidateId String    @map("candidate_id")
+  visaNo      String?   @map("visa_no")
+  visaType    String?   @map("visa_type")
+  profession  String?
+  sponsor     String?
+  issueDate   DateTime? @map("issue_date")
+  expiryDate  DateTime? @map("expiry_date")
+  status      String    @default("PENDING")
+  fileId      String?   @map("file_id")
+  isCurrent   Boolean   @default(true) @map("is_current")
+  remarks     String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@map("visas")
+}
+
+model MofaRecord {
+  id             String    @id @default(uuid())
+  candidateId    String    @map("candidate_id")
+  mofaNo         String?   @map("mofa_no")
+  submissionDate DateTime? @map("submission_date")
+  approvalDate   DateTime? @map("approval_date")
+  status         String    @default("PENDING")
+  fileId         String?   @map("file_id")
+  isCurrent      Boolean   @default(true) @map("is_current")
+  remarks        String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@map("mofa_records")
+}
+
+model EmbassyRecord {
+  id              String    @id @default(uuid())
+  candidateId     String    @map("candidate_id")
+  appointmentDate DateTime? @map("appointment_date")
+  submissionDate  DateTime? @map("submission_date")
+  collectionDate  DateTime? @map("collection_date")
+  status          String    @default("PENDING")
+  fileId          String?   @map("file_id")
+  isCurrent       Boolean   @default(true) @map("is_current")
+  remarks         String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  candidate Candidate     @relation(fields: [candidateId], references: [id])
+  file      FileRegistry? @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@map("embassy_records")
 }
 
 model Contract {
