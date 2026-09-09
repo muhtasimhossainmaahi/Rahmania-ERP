@@ -8,12 +8,16 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  MANAGER
-  ACCOUNTANT
-  SALES
-  WAREHOUSE
-  EMPLOYEE
+  SUPER_ADMIN
+  MANAGEMENT
+  OPERATIONS
+  MARKETING
+  EMBASSY
+  MANPOWER
+  ACCOUNTS
+  MEDICAL_REP
+  AGENT
+  VIEWER
 }
 
 model User {
@@ -42,56 +46,4 @@ model AuditLog {
 
   @@index([userId])
   @@index([entityType, entityId])
-}
-
-model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([name])
-}
-
-model Supplier {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([name])
-}
-
-model Product {
-  id           String   @id @default(uuid())
-  sku          String   @unique
-  barcode      String?  @unique
-  name         String
-  description  String?
-  unit         String   @default("pcs")
-  reorderLevel Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([name])
-}
-
-model Warehouse {
-  id        String   @id @default(uuid())
-  name      String
-  location  String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([name])
 }

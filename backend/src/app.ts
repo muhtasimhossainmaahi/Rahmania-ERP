@@ -4,10 +4,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { errorHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth/auth.routes";
-import { customerRouter } from "./modules/customers/customer.routes";
-import { productRouter } from "./modules/products/product.routes";
-import { supplierRouter } from "./modules/suppliers/supplier.routes";
-import { warehouseRouter } from "./modules/warehouses/warehouse.routes";
 
 export function createApp() {
   const app = express();
@@ -22,10 +18,6 @@ export function createApp() {
   });
 
   app.use("/auth", authRouter);
-  app.use("/customers", customerRouter);
-  app.use("/suppliers", supplierRouter);
-  app.use("/products", productRouter);
-  app.use("/warehouses", warehouseRouter);
 
   app.use(errorHandler);
 

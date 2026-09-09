@@ -9,6 +9,7 @@ export const authRouter = Router();
 authRouter.post("/login", login);
 authRouter.get("/me", authenticate, me);
 
-// User accounts are provisioned by an admin, not self-service — matches the
-// ERP's internal, role-based access model rather than public signup.
-authRouter.post("/register", authenticate, requireRole(Role.ADMIN), register);
+// User accounts are provisioned by Super Admin, not self-service — matches
+// section 6/7 of the SRS: Users/Settings is Full-control for Super Admin
+// only, No access for every other role.
+authRouter.post("/register", authenticate, requireRole(Role.SUPER_ADMIN), register);

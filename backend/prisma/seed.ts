@@ -23,7 +23,7 @@ async function main() {
     data: {
       email,
       name,
-      role: Role.ADMIN,
+      role: Role.SUPER_ADMIN,
       passwordHash: await bcrypt.hash(password, 10),
     },
   });
