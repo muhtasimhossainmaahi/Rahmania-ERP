@@ -154,6 +154,46 @@ is flagged.
   confirmed, update via `PUT /settings/passport-custody-overdue-days`
   (no code change needed, just the value).
 
+### 13. Interview result vs. candidate status can silently drift out of sync
+- **Spec**: SRS 8.5 — "System calculates/flags the next required stage."
+- **Current state**: recording an InterviewCandidate result (e.g.
+  SELECTED) does not touch the candidate's own `currentStatus` — they're
+  independent fields, updated through separate endpoints
+  (`PATCH /interview-events/:id/candidates/:entryId` vs.
+  `PATCH /candidates/:id/status`). This was a deliberate choice (see the
+  InterviewEvent module commit) to avoid guessing status mappings for
+  Hold/Second Interview/No Show and to keep a single audited path for
+  candidate status changes — but it means a candidate can sit with an
+  interview result of SELECTED while `currentStatus` is still e.g.
+  REGISTERED, with nothing surfacing that mismatch.
+- **To close**: needs a real decision from Rahmania operations, not an
+  assumption either way — this affects daily workflow (who's expected to
+  notice and act on the drift). Two options on the table: (a) auto-sync
+  candidate status when an unambiguous result (SELECTED/REJECTED) is
+  recorded, or (b) keep them independent but surface a warning/flag
+  wherever both are shown together (Candidate Profile, interview roster)
+  when they disagree. Whichever is chosen, it should be a considered
+  product decision, not something assumed in code.
+
+### 14. InterviewCandidate removal is a hard delete, unlike Documents
+- **Spec**: no explicit SRS rule for removing an interview assignment
+  specifically, but SRS 8.6 and the general audit-trail principle
+  (8.17) favor archive/soft-delete over permanent deletion elsewhere in
+  the system (CandidateDocument, CandidateStatusHistory).
+- **Current state**: `DELETE /interview-events/:id/candidates/:entryId`
+  hard-deletes the row. The action is still audit-logged with the full
+  prior row captured as `before`, so it's traceable in AuditLog, but the
+  row itself is gone from `interview_candidates` — it won't show up in
+  a query against that table directly, only in the audit log.
+- **To close**: needs a decision on whether this should instead be a
+  soft-delete (e.g. an `isActive`/archived flag, consistent with how
+  CandidateDocument versions are archived rather than deleted) so the
+  row stays queryable in place. Flagging for consistency review rather
+  than assuming the current hard-delete is fine — it was a judgment
+  call at the time (reasoning: a scheduling assignment felt less
+  "record-like" than a document), but that reasoning wasn't validated
+  against how the rest of the system treats removal.
+
 ## Resolved
 
 - **Duplicate-passport warn-or-block toggle** (SRS 21) — implemented via
