@@ -5,6 +5,16 @@ import { Actor, assertCandidateAccess } from "../candidates/candidate.service";
 import { getFile } from "../files/file.service";
 import { CreateEmbassyRecordInput, UpdateEmbassyRecordInput } from "./embassyRecord.schema";
 
+// Same pattern as MedicalRecord/Visa/MofaRecord: identifying context
+// inline so every consumer avoids a second round-trip to the Candidate
+// module.
+const CANDIDATE_SUMMARY_SELECT = {
+  id: true,
+  candidateCode: true,
+  fullName: true,
+  passportNo: true,
+} as const;
+
 async function assertCandidateExists(candidateId: string) {
   const candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
   if (!candidate) {
@@ -15,12 +25,19 @@ async function assertCandidateExists(candidateId: string) {
 
 export async function listEmbassyRecords(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.embassyRecord.findMany({ where: { candidateId }, orderBy: { createdAt: "desc" } });
+  return prisma.embassyRecord.findMany({
+    where: { candidateId },
+    orderBy: { createdAt: "desc" },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 export async function getCurrentEmbassyRecord(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.embassyRecord.findFirst({ where: { candidateId, isCurrent: true } });
+  return prisma.embassyRecord.findFirst({
+    where: { candidateId, isCurrent: true },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 export async function createEmbassyRecord(

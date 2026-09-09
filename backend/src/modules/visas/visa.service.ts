@@ -5,6 +5,16 @@ import { Actor, assertCandidateAccess } from "../candidates/candidate.service";
 import { getFile } from "../files/file.service";
 import { CreateVisaInput, UpdateVisaInput } from "./visa.schema";
 
+// Included on read so every consumer of this endpoint (not just roles
+// without broader Candidate access) gets identifying context without a
+// second round-trip — same pattern as MedicalRecord.
+const CANDIDATE_SUMMARY_SELECT = {
+  id: true,
+  candidateCode: true,
+  fullName: true,
+  passportNo: true,
+} as const;
+
 async function assertCandidateExists(candidateId: string) {
   const candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
   if (!candidate) {
@@ -15,12 +25,19 @@ async function assertCandidateExists(candidateId: string) {
 
 export async function listVisas(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.visa.findMany({ where: { candidateId }, orderBy: { createdAt: "desc" } });
+  return prisma.visa.findMany({
+    where: { candidateId },
+    orderBy: { createdAt: "desc" },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 export async function getCurrentVisa(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.visa.findFirst({ where: { candidateId, isCurrent: true } });
+  return prisma.visa.findFirst({
+    where: { candidateId, isCurrent: true },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 // SRS 15's "zero/one or multiple visa/MOFA/medical/police/BMET records

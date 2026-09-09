@@ -5,6 +5,15 @@ import { Actor, assertCandidateAccess } from "../candidates/candidate.service";
 import { getFile } from "../files/file.service";
 import { CreateMofaRecordInput, UpdateMofaRecordInput } from "./mofaRecord.schema";
 
+// Same pattern as MedicalRecord/Visa: identifying context inline so every
+// consumer avoids a second round-trip to the Candidate module.
+const CANDIDATE_SUMMARY_SELECT = {
+  id: true,
+  candidateCode: true,
+  fullName: true,
+  passportNo: true,
+} as const;
+
 async function assertCandidateExists(candidateId: string) {
   const candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
   if (!candidate) {
@@ -15,12 +24,19 @@ async function assertCandidateExists(candidateId: string) {
 
 export async function listMofaRecords(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.mofaRecord.findMany({ where: { candidateId }, orderBy: { createdAt: "desc" } });
+  return prisma.mofaRecord.findMany({
+    where: { candidateId },
+    orderBy: { createdAt: "desc" },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 export async function getCurrentMofaRecord(candidateId: string, actor: Actor) {
   await assertCandidateAccess(candidateId, actor);
-  return prisma.mofaRecord.findFirst({ where: { candidateId, isCurrent: true } });
+  return prisma.mofaRecord.findFirst({
+    where: { candidateId, isCurrent: true },
+    include: { candidate: { select: CANDIDATE_SUMMARY_SELECT } },
+  });
 }
 
 export async function createMofaRecord(
