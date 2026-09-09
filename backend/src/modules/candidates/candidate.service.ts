@@ -77,21 +77,31 @@ export async function listCandidates(
   return { data, total };
 }
 
-export async function getCandidate(id: string, actor: Actor) {
-  const candidate = await prisma.candidate.findUnique({
-    where: { id },
-    include: { statusHistory: { orderBy: { changedAt: "desc" } } },
-  });
+// Shared by every module that hangs off Candidate (documents, interviews,
+// visa, medical, ...): confirms the candidate exists and, for an Agent
+// actor, that it's their own (SRS 15). Modules needing scoped read access
+// to a candidate's children should gate through this rather than
+// re-deriving the agent-ownership check themselves.
+export async function assertCandidateAccess(candidateId: string, actor: Actor) {
+  const candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
   if (!candidate) {
     throw new HttpError(404, "Candidate not found");
   }
   if (actor.role === Role.AGENT) {
     const agentId = await getOwnAgentId(actor.id);
     if (!agentId || candidate.agentId !== agentId) {
-      throw new HttpError(403, "Not permitted to view this candidate");
+      throw new HttpError(403, "Not permitted to access this candidate");
     }
   }
   return candidate;
+}
+
+export async function getCandidate(id: string, actor: Actor) {
+  await assertCandidateAccess(id, actor);
+  return prisma.candidate.findUnique({
+    where: { id },
+    include: { statusHistory: { orderBy: { changedAt: "desc" } } },
+  });
 }
 
 async function assertReferencesValid(input: {

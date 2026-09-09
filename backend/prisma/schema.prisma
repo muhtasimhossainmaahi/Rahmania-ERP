@@ -98,7 +98,8 @@ model DocumentType {
   expiryRequired Boolean @default(false) @map("expiry_required")
   isActive       Boolean @default(true) @map("status")
 
-  country Country? @relation(fields: [countryId], references: [id])
+  country   Country?            @relation(fields: [countryId], references: [id])
+  documents CandidateDocument[]
 
   @@map("document_types")
 }
@@ -125,8 +126,9 @@ model FileRegistry {
   createdAt    DateTime  @default(now()) @map("created_at")
   archivedAt   DateTime? @map("archived_at")
 
-  companies Company[]
-  agents    Agent[]
+  companies          Company[]
+  agents             Agent[]
+  candidateDocuments CandidateDocument[]
 
   @@map("file_registry")
 }
@@ -282,12 +284,44 @@ model Candidate {
   position         DemandPosition?          @relation(fields: [positionId], references: [id])
   assignedEmployee User?                    @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
   statusHistory    CandidateStatusHistory[]
+  documents        CandidateDocument[]
 
   @@index([passportNo])
   @@index([currentStatus])
   @@index([agentId])
   @@index([demandId])
   @@map("candidates")
+}
+
+enum CandidateDocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  ARCHIVED
+}
+
+model CandidateDocument {
+  id             String                  @id @default(uuid())
+  candidateId    String                  @map("candidate_id")
+  documentTypeId String                  @map("document_type_id")
+  fileId         String                  @map("file_id")
+  version        Int                     @default(1)
+  issueDate      DateTime?               @map("issue_date")
+  expiryDate     DateTime?               @map("expiry_date")
+  status         CandidateDocumentStatus @default(PENDING)
+  uploadedBy     String                  @map("uploaded_by")
+  verifiedBy     String?                 @map("verified_by")
+  verifiedAt     DateTime?               @map("verified_at")
+  remarks        String?
+  createdAt      DateTime                @default(now()) @map("created_at")
+
+  candidate    Candidate    @relation(fields: [candidateId], references: [id])
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+  file         FileRegistry @relation(fields: [fileId], references: [id])
+
+  @@index([candidateId])
+  @@index([candidateId, documentTypeId])
+  @@map("candidate_documents")
 }
 
 model CandidateStatusHistory {
