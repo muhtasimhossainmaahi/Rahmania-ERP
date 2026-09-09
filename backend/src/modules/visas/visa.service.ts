@@ -1,8 +1,10 @@
+import { Role } from "@prisma/client";
 import { prisma } from "../../config/db";
 import { AuditContext, writeAuditLog } from "../../lib/auditLog";
 import { HttpError } from "../../middleware/errorHandler";
 import { Actor, assertCandidateAccess } from "../candidates/candidate.service";
 import { getFile } from "../files/file.service";
+import { notifyRoles } from "../notifications/notification.service";
 import { CreateVisaInput, UpdateVisaInput } from "./visa.schema";
 
 // Included on read so every consumer of this endpoint (not just roles
@@ -45,7 +47,7 @@ export async function getCurrentVisa(candidateId: string, actor: Actor) {
 // current one in the same transaction, so exactly one row is ever
 // isCurrent for a given candidate.
 export async function createVisa(candidateId: string, input: CreateVisaInput, context: AuditContext) {
-  await assertCandidateExists(candidateId);
+  const candidate = await assertCandidateExists(candidateId);
   if (input.fileId) {
     await getFile(input.fileId);
   }
@@ -67,7 +69,25 @@ export async function createVisa(candidateId: string, input: CreateVisaInput, co
     after: visa,
   });
 
+  // SRS 16: "Visa received -> Create next-stage task -> Operations/
+  // Embassy." No fixed status vocabulary on Visa, so "received" is read
+  // off issueDate going from unset to set, the same structural signal the
+  // Ready-to-Depart gate uses for "valid visa" (see candidatePrerequisites.ts).
+  if (!previous?.issueDate && visa.issueDate) {
+    await notifyVisaReceived(candidate.fullName, candidate.candidateCode, candidateId);
+  }
+
   return visa;
+}
+
+async function notifyVisaReceived(fullName: string, candidateCode: string, candidateId: string) {
+  await notifyRoles([Role.OPERATIONS, Role.EMBASSY], {
+    type: "VISA_RECEIVED",
+    title: "Visa received",
+    message: `Visa received for ${fullName} (${candidateCode}) — ready for MOFA/Embassy processing.`,
+    entityType: "Candidate",
+    entityId: candidateId,
+  });
 }
 
 // Updates the current attempt in place (e.g. PENDING -> RECEIVED). Once an
@@ -97,6 +117,11 @@ export async function updateCurrentVisa(
     before,
     after: visa,
   });
+
+  if (!before.issueDate && visa.issueDate) {
+    const candidate = await assertCandidateExists(candidateId);
+    await notifyVisaReceived(candidate.fullName, candidate.candidateCode, candidateId);
+  }
 
   return visa;
 }

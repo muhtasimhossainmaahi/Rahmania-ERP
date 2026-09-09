@@ -1,8 +1,10 @@
+import { Role } from "@prisma/client";
 import { prisma } from "../../config/db";
 import { AuditContext, writeAuditLog } from "../../lib/auditLog";
 import { HttpError } from "../../middleware/errorHandler";
 import { Actor, assertCandidateAccess } from "../candidates/candidate.service";
 import { getFile } from "../files/file.service";
+import { notifyRoles } from "../notifications/notification.service";
 import { CreateBmetRecordInput, UpdateBmetRecordInput } from "./bmetRecord.schema";
 
 // Same pattern as every other reprocessing module: identifying context
@@ -48,7 +50,7 @@ export async function createBmetRecord(
   input: CreateBmetRecordInput,
   context: AuditContext,
 ) {
-  await assertCandidateExists(candidateId);
+  const candidate = await assertCandidateExists(candidateId);
   if (input.fileId) {
     await getFile(input.fileId);
   }
@@ -70,7 +72,26 @@ export async function createBmetRecord(
     after: record,
   });
 
+  // SRS 16: "BMET completed -> Mark departure readiness check ->
+  // Manpower + Operations." No fixed status vocabulary on BmetRecord, so
+  // "completed" is read off clearanceDate going from unset to set, the
+  // same structural signal the Ready-to-Depart gate uses (see
+  // candidatePrerequisites.ts).
+  if (!previous?.clearanceDate && record.clearanceDate) {
+    await notifyBmetCompleted(candidate.fullName, candidate.candidateCode, candidateId);
+  }
+
   return record;
+}
+
+async function notifyBmetCompleted(fullName: string, candidateCode: string, candidateId: string) {
+  await notifyRoles([Role.MANPOWER, Role.OPERATIONS], {
+    type: "BMET_COMPLETED",
+    title: "BMET clearance completed",
+    message: `BMET/manpower clearance completed for ${fullName} (${candidateCode}) — ready for departure-readiness check.`,
+    entityType: "Candidate",
+    entityId: candidateId,
+  });
 }
 
 export async function updateCurrentBmetRecord(
@@ -96,6 +117,11 @@ export async function updateCurrentBmetRecord(
     before,
     after: record,
   });
+
+  if (!before.clearanceDate && record.clearanceDate) {
+    const candidate = await assertCandidateExists(candidateId);
+    await notifyBmetCompleted(candidate.fullName, candidate.candidateCode, candidateId);
+  }
 
   return record;
 }

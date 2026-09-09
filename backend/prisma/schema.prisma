@@ -46,6 +46,9 @@ model User {
   statusChanges         CandidateStatusHistory[] @relation("StatusChangedBy")
   passportMovementsFrom PassportMovement[]       @relation("PassportMovementFrom")
   passportMovementsTo   PassportMovement[]       @relation("PassportMovementTo")
+  tasksAssigned         Task[]                   @relation("TaskAssignee")
+  tasksCreated          Task[]                   @relation("TaskCreator")
+  notifications         Notification[]
 
   @@map("users")
 }
@@ -75,6 +78,7 @@ model Department {
   isActive Boolean @default(true) @map("status")
 
   users User[]
+  tasks Task[]
 
   @@map("departments")
 }
@@ -214,6 +218,7 @@ model Demand {
   positions       DemandPosition[]
   candidates      Candidate[]
   interviewEvents InterviewEvent[]
+  tasks           Task[]
 
   @@map("demands")
 }
@@ -309,6 +314,7 @@ model Candidate {
   bmetRecords       BmetRecord[]
   ticket            Ticket?
   departure         Departure?
+  tasks             Task[]
 
   @@index([passportNo])
   @@index([currentStatus])
@@ -629,4 +635,68 @@ model CandidateStatusHistory {
 
   @@index([candidateId])
   @@map("candidate_status_history")
+}
+
+// SRS gives no explicit vocabulary for priority/status (unlike, say,
+// PoliceClearanceStatus); these are a judgment call documented in
+// docs/BUILD_NOTES.md.
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  taskNo       String       @unique @map("task_no")
+  title        String
+  candidateId  String?      @map("candidate_id")
+  demandId     String?      @map("demand_id")
+  departmentId String?      @map("department_id")
+  assignedTo   String?      @map("assigned_to")
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime?    @map("due_date")
+  status       TaskStatus   @default(PENDING)
+  createdBy    String       @map("created_by")
+  completedAt  DateTime?    @map("completed_at")
+  remarks      String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  candidate  Candidate?  @relation(fields: [candidateId], references: [id])
+  demand     Demand?     @relation(fields: [demandId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  assignee   User?       @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  creator    User        @relation("TaskCreator", fields: [createdBy], references: [id])
+
+  @@index([assignedTo])
+  @@index([candidateId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  type       String
+  title      String
+  message    String
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

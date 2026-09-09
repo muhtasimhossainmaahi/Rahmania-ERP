@@ -12,7 +12,9 @@ import { demandRouter } from "./modules/demands/demand.routes";
 import { departmentRouter } from "./modules/departments/department.routes";
 import { fileRouter } from "./modules/files/file.routes";
 import { interviewEventRouter } from "./modules/interviewEvents/interviewEvent.routes";
+import { notificationRouter } from "./modules/notifications/notification.routes";
 import { settingsRouter } from "./modules/settings/settings.routes";
+import { taskRouter } from "./modules/tasks/task.routes";
 
 export function createApp() {
   const app = express();
@@ -36,6 +38,8 @@ export function createApp() {
   app.use("/candidates", candidateRouter);
   app.use("/interview-events", interviewEventRouter);
   app.use("/settings", settingsRouter);
+  app.use("/tasks", taskRouter);
+  app.use("/notifications", notificationRouter);
 
   app.use(errorHandler);
 

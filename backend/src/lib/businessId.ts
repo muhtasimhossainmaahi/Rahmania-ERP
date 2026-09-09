@@ -33,3 +33,11 @@ export async function generateInterviewEventCode(): Promise<string> {
   const seq = await nextSequenceNumber(`interview_event_seq_${year}`);
   return `INT-${year}-${String(seq).padStart(4, "0")}`;
 }
+
+// SRS gives no explicit format for task numbers either; reusing the same
+// PREFIX-YEAR-NNNN shape as Demand/InterviewEvent for consistency.
+export async function generateTaskNo(): Promise<string> {
+  const year = new Date().getFullYear();
+  const seq = await nextSequenceNumber(`task_seq_${year}`);
+  return `TSK-${year}-${String(seq).padStart(4, "0")}`;
+}

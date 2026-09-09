@@ -6,6 +6,7 @@ import { PaginationParams } from "../../lib/pagination";
 import { normalizePassport } from "../../lib/passport";
 import { getDuplicatePassportMode } from "../../lib/settings";
 import { HttpError } from "../../middleware/errorHandler";
+import { notifyRoles } from "../notifications/notification.service";
 import { CreateCandidateInput, UpdateCandidateInput } from "./candidate.schema";
 import { checkMandatoryPrerequisites } from "./candidatePrerequisites";
 import { isStandardTransition } from "./candidateStatus";
@@ -318,6 +319,28 @@ export async function changeCandidateStatus(
           overrideReason: remarks,
         },
   });
+
+  // SRS 16: "Candidate marked Ready -> Run prerequisite validation ->
+  // Operations/Management" and "Departure completed -> Close recruitment
+  // pipeline -> Management" (Accounts recipient removed along with the
+  // Finance & Accounting descope, see docs/SRS.md 4.2/8.14).
+  if (targetStatus === CandidateStatus.READY_TO_DEPART) {
+    await notifyRoles([Role.OPERATIONS, Role.MANAGEMENT], {
+      type: "CANDIDATE_READY_TO_DEPART",
+      title: "Candidate marked Ready to Depart",
+      message: `${candidate.fullName} (${candidate.candidateCode}) has been marked Ready to Depart.`,
+      entityType: "Candidate",
+      entityId: id,
+    });
+  } else if (targetStatus === CandidateStatus.DEPARTED) {
+    await notifyRoles([Role.MANAGEMENT], {
+      type: "CANDIDATE_DEPARTED",
+      title: "Departure completed",
+      message: `${candidate.fullName} (${candidate.candidateCode}) has departed — recruitment pipeline closed.`,
+      entityType: "Candidate",
+      entityId: id,
+    });
+  }
 
   return updated;
 }

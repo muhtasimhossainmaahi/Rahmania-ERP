@@ -22,6 +22,12 @@ CREATE TYPE "InterviewAttendance" AS ENUM ('PRESENT', 'ABSENT');
 -- CreateEnum
 CREATE TYPE "CandidateDocumentStatus" AS ENUM ('PENDING', 'VERIFIED', 'REJECTED', 'ARCHIVED');
 
+-- CreateEnum
+CREATE TYPE "TaskPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+
+-- CreateEnum
+CREATE TYPE "TaskStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -445,6 +451,42 @@ CREATE TABLE "candidate_status_history" (
     CONSTRAINT "candidate_status_history_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "tasks" (
+    "id" TEXT NOT NULL,
+    "task_no" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "candidate_id" TEXT,
+    "demand_id" TEXT,
+    "department_id" TEXT,
+    "assigned_to" TEXT,
+    "priority" "TaskPriority" NOT NULL DEFAULT 'MEDIUM',
+    "due_date" TIMESTAMP(3),
+    "status" "TaskStatus" NOT NULL DEFAULT 'PENDING',
+    "created_by" TEXT NOT NULL,
+    "completed_at" TIMESTAMP(3),
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "notifications" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "entity_type" TEXT,
+    "entity_id" TEXT,
+    "read_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_employee_code_key" ON "users"("employee_code");
 
@@ -552,6 +594,24 @@ CREATE INDEX "candidate_documents_candidate_id_document_type_id_idx" ON "candida
 
 -- CreateIndex
 CREATE INDEX "candidate_status_history_candidate_id_idx" ON "candidate_status_history"("candidate_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tasks_task_no_key" ON "tasks"("task_no");
+
+-- CreateIndex
+CREATE INDEX "tasks_assigned_to_idx" ON "tasks"("assigned_to");
+
+-- CreateIndex
+CREATE INDEX "tasks_candidate_id_idx" ON "tasks"("candidate_id");
+
+-- CreateIndex
+CREATE INDEX "tasks_status_idx" ON "tasks"("status");
+
+-- CreateIndex
+CREATE INDEX "notifications_user_id_idx" ON "notifications"("user_id");
+
+-- CreateIndex
+CREATE INDEX "notifications_user_id_read_at_idx" ON "notifications"("user_id", "read_at");
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -687,3 +747,21 @@ ALTER TABLE "candidate_status_history" ADD CONSTRAINT "candidate_status_history_
 
 -- AddForeignKey
 ALTER TABLE "candidate_status_history" ADD CONSTRAINT "candidate_status_history_changed_by_fkey" FOREIGN KEY ("changed_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_candidate_id_fkey" FOREIGN KEY ("candidate_id") REFERENCES "candidates"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_demand_id_fkey" FOREIGN KEY ("demand_id") REFERENCES "demands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
