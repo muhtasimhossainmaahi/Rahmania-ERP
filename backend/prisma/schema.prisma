@@ -21,29 +21,89 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
+  id           String    @id @default(uuid())
+  employeeCode String?   @unique @map("employee_code")
+  email        String    @unique
+  passwordHash String    @map("password_hash")
   name         String
+  mobile       String?
   role         Role
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  departmentId String?   @map("department_id")
+  designation  String?
+  managerId    String?   @map("manager_id")
+  isActive     Boolean   @default(true) @map("status")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  auditLogs AuditLog[]
+  department Department? @relation(fields: [departmentId], references: [id])
+  manager    User?       @relation("UserManager", fields: [managerId], references: [id])
+  reports    User[]      @relation("UserManager")
+  auditLogs  AuditLog[]
+
+  @@map("users")
 }
 
 model AuditLog {
   id         String   @id @default(uuid())
-  userId     String
+  userId     String   @map("user_id")
   action     String
-  entityType String
-  entityId   String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  beforeJson Json?    @map("before_json")
+  afterJson  Json?    @map("after_json")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Department {
+  id       String  @id @default(uuid())
+  name     String
+  isActive Boolean @default(true) @map("status")
+
+  users User[]
+
+  @@map("departments")
+}
+
+model Country {
+  id       String  @id @default(uuid())
+  name     String
+  code     String  @unique
+  isActive Boolean @default(true) @map("status")
+
+  documentTypes DocumentType[]
+
+  @@map("countries")
+}
+
+model DocumentType {
+  id             String  @id @default(uuid())
+  name           String
+  countryId      String? @map("country_id")
+  mandatoryFlag  Boolean @default(false) @map("mandatory_flag")
+  expiryRequired Boolean @default(false) @map("expiry_required")
+  isActive       Boolean @default(true) @map("status")
+
+  country Country? @relation(fields: [countryId], references: [id])
+
+  @@map("document_types")
+}
+
+model Setting {
+  id           String   @id @default(uuid())
+  settingKey   String   @unique @map("setting_key")
+  settingValue String   @map("setting_value")
+  dataType     String   @map("data_type")
+  updatedBy    String   @map("updated_by")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }

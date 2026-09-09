@@ -1,12 +1,18 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db";
 
-interface AuditLogInput {
+export interface AuditContext {
   userId: string;
+  ip?: string;
+  userAgent?: string;
+}
+
+interface AuditLogInput extends AuditContext {
   action: string;
   entityType: string;
   entityId?: string;
-  metadata?: Record<string, unknown>;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
 }
 
 export function writeAuditLog(input: AuditLogInput) {
@@ -16,7 +22,10 @@ export function writeAuditLog(input: AuditLogInput) {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId,
-      metadata: input.metadata as Prisma.InputJsonValue | undefined,
+      beforeJson: (input.before ?? undefined) as Prisma.InputJsonValue | undefined,
+      afterJson: (input.after ?? undefined) as Prisma.InputJsonValue | undefined,
+      ipAddress: input.ip,
+      userAgent: input.userAgent,
     },
   });
 }
