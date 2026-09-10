@@ -1,0 +1,13 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY . .
+RUN npx prisma generate
+
+EXPOSE 4000
+
+CMD sh -c "npx prisma migrate deploy && node prisma/seed.js && node src/server.js"

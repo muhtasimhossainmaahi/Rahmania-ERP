@@ -1,0 +1,343 @@
+// Rahmania Corporation - HR & Attendance Management System
+// Standalone project. Not related to any other Rahmania ERP schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+  HR_ADMIN
+  MANAGEMENT
+}
+
+enum EmploymentType {
+  PERMANENT
+  TEMPORARY
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  RESIGNED
+  TERMINATED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  HALF_DAY
+  LEAVE
+  HOLIDAY
+  WEEKEND
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum OvertimeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  REVIEWED
+  FINALIZED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean   @default(true)
+  employee     Employee?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Department {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  employees Employee[]
+  createdAt DateTime   @default(now())
+}
+
+model Designation {
+  id        String     @id @default(cuid())
+  title     String     @unique
+  employees Employee[]
+  createdAt DateTime   @default(now())
+}
+
+model Employee {
+  id               String           @id @default(cuid())
+  employeeCode     String           @unique // must match the ID enrolled on the ZKTeco device
+  firstName        String
+  lastName         String
+  photoUrl         String?
+  phone            String?
+  email            String?
+  address          String?
+  nid              String?
+  joiningDate      DateTime
+  departmentId     String?
+  department       Department?      @relation(fields: [departmentId], references: [id])
+  designationId    String?
+  designation      Designation?     @relation(fields: [designationId], references: [id])
+  employmentType   EmploymentType
+  employmentStatus EmploymentStatus @default(ACTIVE)
+
+  // Per-employee flag rather than hardcoded to employment type, so any
+  // employee (including a temporary one) can be granted a login later.
+  hasSelfServiceAccess Boolean @default(false)
+
+  managerId     String?
+  manager       Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports Employee[] @relation("EmployeeManager")
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  documents         Document[]
+  salaryStructure   SalaryStructure?
+  attendanceRecords AttendanceRecord[]
+  leaveBalances     LeaveBalance[]
+  leaveRequests     LeaveRequest[]     @relation("LeaveApplicant")
+  approvedLeaves    LeaveRequest[]     @relation("LeaveApprover")
+  overtimeRecords   OvertimeRecord[]
+  approvedOvertime  OvertimeRecord[]   @relation("OvertimeApprover")
+  payslips          Payslip[]
+  manualDeductions  ManualDeduction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       String // e.g. NID, CONTRACT, CERTIFICATE
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+}
+
+// Raw punch logs pulled from the ZKTeco K50A device, kept for audit/replay.
+model DevicePunch {
+  id           String   @id @default(cuid())
+  employeeCode String
+  timestamp    DateTime
+  deviceId     String   @default("K50A-MAIN")
+  verifyMode   Int?
+  raw          Json?
+  createdAt    DateTime @default(now())
+
+  @@unique([employeeCode, timestamp, deviceId])
+  @@index([employeeCode, timestamp])
+}
+
+model AttendanceRecord {
+  id             String           @id @default(cuid())
+  employeeId     String
+  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date           DateTime         @db.Date
+  checkIn        DateTime?
+  checkOut       DateTime?
+  status         AttendanceStatus
+  isManualEntry  Boolean          @default(false)
+  note           String?
+  leaveRequestId String?
+  leaveRequest   LeaveRequest?    @relation(fields: [leaveRequestId], references: [id])
+  createdById    String? // user who made a manual correction
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model LeaveType {
+  id                   String         @id @default(cuid())
+  name                 String         @unique
+  entitlementPermanent Int            @default(0) // days/year
+  entitlementTemporary Int            @default(0) // days/year
+  requiresApproval     Boolean        @default(true)
+  leaveBalances        LeaveBalance[]
+  leaveRequests        LeaveRequest[]
+  createdAt            DateTime       @default(now())
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year        Int
+  entitlement Float
+  taken       Float     @default(0)
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id                String             @id @default(cuid())
+  employeeId        String
+  employee          Employee           @relation("LeaveApplicant", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId       String
+  leaveType         LeaveType          @relation(fields: [leaveTypeId], references: [id])
+  startDate         DateTime           @db.Date
+  endDate           DateTime           @db.Date
+  days              Float
+  reason            String?
+  status            LeaveRequestStatus @default(PENDING)
+  approverId        String?
+  approver          Employee?          @relation("LeaveApprover", fields: [approverId], references: [id])
+  decisionNote      String?
+  decidedAt         DateTime?
+  attendanceRecords AttendanceRecord[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model OvertimeRecord {
+  id             String         @id @default(cuid())
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date           DateTime       @db.Date
+  hours          Float
+  rateMultiplier Float // snapshot of settings.otRateMultiplier at calculation time
+  status         OvertimeStatus @default(PENDING)
+  approverId     String?
+  approver       Employee?      @relation("OvertimeApprover", fields: [approverId], references: [id])
+  decidedAt      DateTime?
+  payrollRunId   String?
+  payrollRun     PayrollRun?    @relation(fields: [payrollRunId], references: [id])
+  createdAt      DateTime       @default(now())
+
+  @@unique([employeeId, date])
+  @@index([status])
+}
+
+model AllowanceType {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  createdAt        DateTime          @default(now())
+  salaryAllowances SalaryAllowance[]
+}
+
+model SalaryStructure {
+  id            String            @id @default(cuid())
+  employeeId    String            @unique
+  employee      Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  basicSalary   Float
+  effectiveFrom DateTime          @default(now())
+  allowances    SalaryAllowance[]
+  updatedAt     DateTime          @updatedAt
+}
+
+model SalaryAllowance {
+  id                String          @id @default(cuid())
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  allowanceTypeId   String
+  allowanceType     AllowanceType   @relation(fields: [allowanceTypeId], references: [id])
+  amount            Float
+
+  @@unique([salaryStructureId, allowanceTypeId])
+}
+
+model PayrollRun {
+  id               String            @id @default(cuid())
+  month            Int // 1-12
+  year             Int
+  status           PayrollRunStatus  @default(DRAFT)
+  createdById      String?
+  reviewedById     String?
+  finalizedAt      DateTime?
+  payslips         Payslip[]
+  overtimeRecords  OvertimeRecord[]
+  manualDeductions ManualDeduction[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([month, year])
+}
+
+model Payslip {
+  id               String     @id @default(cuid())
+  payrollRunId     String
+  payrollRun       PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee   @relation(fields: [employeeId], references: [id])
+  basicSalary      Float
+  totalAllowances  Float
+  grossSalary      Float
+  payableDays      Float
+  totalDays        Float
+  unpaidDeduction  Float
+  overtimeHours    Float
+  overtimePay      Float
+  manualDeductions Float
+  netPay           Float
+  pdfPath          String?
+  createdAt        DateTime   @default(now())
+
+  @@unique([payrollRunId, employeeId])
+}
+
+model ManualDeduction {
+  id           String      @id @default(cuid())
+  employeeId   String
+  employee     Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollRunId String?
+  payrollRun   PayrollRun? @relation(fields: [payrollRunId], references: [id])
+  amount       Float
+  reason       String
+  createdAt    DateTime    @default(now())
+}
+
+// Singleton row (id = "SETTINGS") holding all admin-configurable settings.
+model SystemSettings {
+  id                            String   @id @default("SETTINGS")
+  weeklyHolidays                Int[]    @default([5]) // 0=Sunday..6=Saturday, default Friday
+  shiftStart                    String   @default("09:00") // "HH:mm"
+  shiftEnd                      String   @default("17:00")
+  gracePeriodMinutes            Int      @default(15)
+  halfDayThresholdHrs           Float    @default(4) // worked hours below this (but > 0) => HALF_DAY
+  otRateMultiplier              Float    @default(1.5)
+  otDailyCapHours               Float    @default(4)
+  otMonthlyCapHours             Float    @default(40)
+  attendanceSyncIntervalMinutes Int      @default(5)
+  updatedAt                     DateTime @updatedAt
+}
+
+model Holiday {
+  id   String   @id @default(cuid())
+  date DateTime @db.Date
+  name String
+  year Int
+
+  @@unique([date])
+  @@index([year])
+}
